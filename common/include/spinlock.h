@@ -104,6 +104,16 @@ out:
 }
 
 /*!
+ * \brief try to acquire spinlock. If lock is already taken, return false.
+ */
+static inline bool spinlock_trylock(spinlock_t* lock) {
+    if (__atomic_exchange_n(&lock->lock, SPINLOCK_LOCKED, __ATOMIC_ACQUIRE) == SPINLOCK_UNLOCKED) {
+      return true;
+    }
+    return false;
+}
+
+/*!
  * \brief Try to acquire a spinlock, with a timeout.
  *
  * \param lock        The lock.

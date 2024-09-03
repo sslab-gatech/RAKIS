@@ -1093,6 +1093,17 @@ noreturn static void print_usage_and_exit(const char* argv_0) {
 }
 
 static int get_aux_value(char** envp, uint64_t type, uint64_t* out_value) {
+#ifdef RAKIS
+  // with RAKIS, gramine's binary will have capabilities that will prevent the loader
+  // from pushing the elf aux vector..
+ #include <sys/auxv.h>
+  int val = getauxval(type);
+  if (!val) {
+    return -1;
+  }
+  *out_value = val;
+  return 0;
+#else
     while (*envp)
         envp++;
 
@@ -1103,6 +1114,7 @@ static int get_aux_value(char** envp, uint64_t type, uint64_t* out_value) {
         }
     }
     return -1;
+#endif
 }
 
 #ifdef ASAN

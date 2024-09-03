@@ -134,6 +134,10 @@ struct libos_thread {
 
     refcount_t ref_count;
     struct libos_lock lock;
+
+#ifdef RAKIS
+    struct rakis_per_thread_strg* rakis_per_thread_strg;
+#endif
 };
 
 struct libos_thread_queue {

@@ -290,7 +290,11 @@ static int64_t proc_read(PAL_HANDLE handle, uint64_t offset, uint64_t count, voi
     if (offset)
         return -PAL_ERROR_INVAL;
 
-    int64_t bytes = DO_SYSCALL(read, handle->process.stream, buffer, count);
+    int64_t bytes;
+    if(RAKIS_IS_READY())
+      bytes = rakis_io_uring_read(handle->process.stream, buffer, count, -1);
+    else
+      bytes = DO_SYSCALL(read, handle->process.stream, buffer, count);
 
     if (bytes < 0)
         switch (bytes) {
@@ -309,7 +313,11 @@ static int64_t proc_write(PAL_HANDLE handle, uint64_t offset, uint64_t count, co
     if (offset)
         return -PAL_ERROR_INVAL;
 
-    int64_t bytes = DO_SYSCALL(write, handle->process.stream, buffer, count);
+    int64_t bytes;
+    if(RAKIS_IS_READY())
+      bytes = rakis_io_uring_write(handle->process.stream, buffer, count, -1);
+    else
+      bytes = DO_SYSCALL(write, handle->process.stream, buffer, count);
 
     if (bytes < 0)
         switch (bytes) {

@@ -1,4 +1,8 @@
 /.lck
 /memcached
 /memcached.tar.gz
-/src
+/memcached-*/
+/libevent-*/
+/libmemcached*/
+/libmemcached.tar.gz
+/memaslap

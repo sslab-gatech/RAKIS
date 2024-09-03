@@ -1,0 +1,41 @@
+# Hello World manifest file example
+
+loader.entrypoint = "file:{{ gramine.libos }}"
+libos.entrypoint = "/mcrypt"
+loader.log_level = "{{ log_level }}"
+
+loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/{{ arch_libdir }}"
+loader.insecure__use_cmdline_argv = true
+loader.insecure__use_host_env = true
+
+fs.mounts = [
+  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}" },
+  { path = "/usr/{{ arch_libdir }}", uri = "file:/usr/{{ arch_libdir }}" },
+  { path = "/mcrypt", uri = "file:mcrypt" },
+  { path = "/dump", uri = "file:/media/xfs/eurosys25-reviewer/dump" },
+  { path = "/dump.nc", uri = "file:/media/xfs/eurosys25-reviewer/dump.nc" },
+]
+sgx.allowed_files = [
+  "file:/media/xfs/eurosys25-reviewer/dump",
+  "file:/media/xfs/eurosys25-reviewer/dump.nc",
+]
+
+sgx.debug = false
+sgx.nonpie_binary = true
+sgx.enclave_size = "1G"
+sgx.max_threads = 24
+
+sgx.trusted_files = [
+  "file:{{ gramine.libos }}",
+  "file:mcrypt",
+  "file:{{ gramine.runtimedir() }}/",
+  "file:{{ arch_libdir }}/",
+  "file:/usr/{{ arch_libdir }}/",
+]
+
+rakis.enabled = true
+rakis.net_threads_num = 1
+rakis.netifs = [ { interface_name = "ens1f0", ip_addr = "10.50.0.1", gw_addr = "10.50.0.1", netmask = "255.255.0.0", mac_addr = "40:a6:b7:40:37:f8", xsks = [ { qid = 0, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl" }] } ]
+rakis.io_uring.io_urings_num = 24
+rakis.arp_table = [ { ip_addr = "10.50.0.2", mac_addr = "40:a6:b7:40:37:f9" } ]

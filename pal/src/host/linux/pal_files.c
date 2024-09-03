@@ -85,8 +85,14 @@ static int64_t file_read(PAL_HANDLE handle, uint64_t offset, uint64_t count, voi
     int64_t ret;
 
     if (handle->file.seekable) {
+      if(RAKIS_IS_READY())
+        ret = rakis_io_uring_read(fd, buffer, count, offset);
+      else
         ret = DO_SYSCALL(pread64, fd, buffer, count, offset);
     } else {
+      if(RAKIS_IS_READY())
+        ret = rakis_io_uring_read(fd, buffer, count, -1);
+      else
         ret = DO_SYSCALL(read, fd, buffer, count);
     }
 
@@ -102,8 +108,14 @@ static int64_t file_write(PAL_HANDLE handle, uint64_t offset, uint64_t count, co
     int64_t ret;
 
     if (handle->file.seekable) {
+      if(RAKIS_IS_READY())
+        ret = rakis_io_uring_write(fd, buffer, count, offset);
+      else
         ret = DO_SYSCALL(pwrite64, fd, buffer, count, offset);
     } else {
+      if(RAKIS_IS_READY())
+        ret = rakis_io_uring_write(fd, buffer, count, -1);
+      else
         ret = DO_SYSCALL(write, fd, buffer, count);
     }
 

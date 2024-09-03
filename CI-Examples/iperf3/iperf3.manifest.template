@@ -1,0 +1,58 @@
+loader.entrypoint = "file:{{ gramine.libos }}"
+libos.entrypoint = "/iperf3"
+loader.log_level = "{{ log_level }}"
+
+loader.env.LD_LIBRARY_PATH = "/lib"
+
+loader.insecure__use_cmdline_argv = true
+
+fs.mounts = [
+  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+  { path = "/iperf3", uri = "file:iperf3" },
+  { type = "tmpfs", path = "/tmp" },
+]
+
+sgx.debug = false
+sgx.nonpie_binary = true
+sgx.enclave_size = "1G"
+sgx.max_threads = 5
+
+sgx.trusted_files = [
+  "file:{{ gramine.libos }}",
+  "file:iperf3",
+  "file:{{ gramine.runtimedir() }}/",
+]
+
+# rakis-specific config
+# whether rakis is enabled or not
+# right now, if rakis is compiled-in, it will be used!
+# so this configuration option is phony for now for later
+# incorporating into gramine.
+rakis.enabled = true
+
+# the number of threads for processing XDP incoming packets.
+# usually set this number to the same number of queues you want
+# to connect to XDP. 
+rakis.net_threads_num = 1
+
+# interface info for XDP socket (network stack configuration)
+# interface_name: name of the interface XDP program is loaded to.
+# ip_addr: IP address for the interface.
+# gw_add:  IP address for the interface gateway.
+# netmask: network mask.
+# mac_addr: MAC address for the interface.
+# xsks: XSK configuration for each interface queue we are attaching to.
+# qid: the interface queue id for this xsk.
+# ctrl_prcs_path: the path for the unix socket where we can claim the xsk socket fd.
+rakis.netifs = [ { interface_name = "ens1f0", ip_addr = "10.50.0.1", gw_addr = "10.50.0.1", netmask = "255.255.0.0", mac_addr = "40:a6:b7:40:37:f8", xsks = [ { qid = 0, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl" }] } ]
+
+# number of pre-created io_urings
+# usually set this number to same as sgx.max_threads
+# basically, at startup we create this number of io_urings,
+# and then we assign them to threads as they are created.
+# if a thread is destroyed, we release the io_uring for reusing
+# by newer threads.
+rakis.io_uring.io_urings_num = 5
+
+# static arp table for use by rakis
+rakis.arp_table = [ { ip_addr = "10.50.0.2", mac_addr = "40:a6:b7:40:37:f9" } ]

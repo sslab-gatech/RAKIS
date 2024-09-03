@@ -37,3 +37,10 @@ option('vtune', type: 'combo', choices: ['disabled', 'enabled'],
 option('vtune_sdk_path', type: 'string',
     value: '/opt/intel/oneapi/vtune/latest/sdk',
     description: 'Path to the VTune SDK installation')
+
+option('rakis', type: 'combo', choices: ['disabled', 'enabled'],
+    value: 'disabled', description: 'Enable RAKIS')
+option('install_with_caps', type: 'combo', choices: ['disabled', 'enabled'],
+    value: 'enabled', description: 'Install Gramine with necessary capabilities to run RAKIS')
+option('rakis_stats', type: 'combo', choices: ['disabled', 'enabled'],
+    value: 'disabled', description: 'Enable printing of rakis\'s stats')

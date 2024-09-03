@@ -1,0 +1,66 @@
+# Memcached manifest file example
+
+loader.entrypoint = "file:{{ gramine.libos }}"
+libos.entrypoint = "/curl"
+
+loader.log_level = "{{ log_level }}"
+
+loader.env.LD_LIBRARY_PATH = "/libcurl/:/libssl/:/libnghttp3/:/libngtcp2/:/lib:{{ arch_libdir }}:/usr/{{ arch_libdir }}"
+
+loader.insecure__use_cmdline_argv = true
+
+sys.enable_sigterm_injection = true
+
+fs.mounts = [
+  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
+  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}" },
+  { path = "/usr/{{ arch_libdir }}", uri = "file:/usr/{{ arch_libdir }}" },
+  { path = "/libcurl/", uri = "file:{{ libcurl_dir }}"},
+  { path = "/libssl/", uri = "file:{{ libssl_dir }}"},
+  { path = "/libnghttp3/", uri = "file:{{ libnghttp3_dir }}"},
+  { path = "/libngtcp2/", uri = "file:{{ libngtcp2_dir }}"},
+  { path = "/etc", uri = "file:/etc" },
+  { path = "/curl", uri = "file:curl" },
+  { path = "/curl-format.txt", uri = "file:curl-format.txt" },
+  { path = "/out", uri = "file:out" },
+]
+
+sgx.debug = false
+sgx.nonpie_binary = true
+sgx.max_threads = 24
+
+
+# Memcached does not fail explicitly when enclave memory is exhausted. Instead, Memcached goes into
+# infinite loop without a listening socket. You can trigger this incorrect behavior by increasing
+# the number of threads to 12 (each thread requires 128MB of memory): `curl -t 12`. This is an
+# issue in Memcached source code, not related to Gramine.
+sgx.enclave_size = "1024M"
+
+sgx.trusted_files = [
+  "file:{{ gramine.libos }}",
+  "file:curl",
+  "file:{{ gramine.runtimedir() }}/",
+  "file:{{ arch_libdir }}/",
+  "file:/usr/{{ arch_libdir }}/",
+  "file:{{ libcurl_dir }}",
+  "file:{{ libssl_dir }}",
+  "file:{{ libnghttp3_dir }}",
+  "file:{{ libngtcp2_dir }}",
+  "file:curl-format.txt"
+]
+
+sgx.allowed_files = [
+  "file:/etc/nsswitch.conf",
+  "file:/etc/ethers",
+  "file:/etc/hosts",
+  "file:/etc/group",
+  "file:/etc/passwd",
+  "file:/etc/gai.conf",
+  "file:out"
+]
+
+rakis.enabled = true
+rakis.net_threads_num = 1
+rakis.netifs = [ { interface_name = "ens1f0", ip_addr = "10.50.0.1", gw_addr = "10.50.0.1", netmask = "255.255.0.0", mac_addr = "40:a6:b7:40:37:f8", xsks = [ { qid = 0, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl" }] } ]
+rakis.io_uring.io_urings_num = 24
+rakis.arp_table = [ { ip_addr = "10.50.0.2", mac_addr = "40:a6:b7:40:37:f9" } ]

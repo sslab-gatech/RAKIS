@@ -16,6 +16,8 @@
 #include "libos_thread.h"
 #include "libos_utils.h"
 #include "pal.h"
+#include "rakis/rakis.h"
+#include "rakis/stack/rakis_misc.h"
 
 static noreturn void libos_clean_and_exit(int exit_code) {
     /*
@@ -166,7 +168,25 @@ static int mark_thread_to_die(struct libos_thread* thread, void* arg) {
     return 1;
 }
 
+#ifdef RAKIS
+static int rakis_print_thread_stats(struct libos_thread* thread, void* arg) {
+    if (thread == (struct libos_thread*)arg) {
+        return 0;
+    }
+
+    RAKIS_USER_THREAD_STAT_PRINT(thread, thread->tid);
+    return 1;
+}
+#endif
+
 bool kill_other_threads(void) {
+
+#ifdef RAKIS
+  RAKIS_TERMINATE();
+  walk_thread_list(rakis_print_thread_stats, get_cur_thread(), false);
+  RAKIS_USER_THREAD_STAT_PRINT(get_cur_thread(), get_cur_thread()->tid);
+#endif
+
     bool killed = false;
     /* Tell other threads to exit. Since `mark_thread_to_die` never returns an error, this call
      * cannot fail. */

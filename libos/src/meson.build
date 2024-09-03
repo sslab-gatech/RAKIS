@@ -106,6 +106,8 @@ libos_sources = files(
     'utils/log.c',
 )
 
+libos_sources += libos_rakis_sources
+
 # Arch-specific meson.build must define the following Meson variables:
 #   - `libos_sources_arch` - a list of arch-specific sources,
 #   - `libos_lds` - a full path to LibOS linker script.

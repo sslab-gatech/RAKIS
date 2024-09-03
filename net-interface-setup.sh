@@ -1,0 +1,12 @@
+sudo ethtool -L ens1f0 combined 5;
+sudo ethtool -l ens1f0;
+ip a;
+sudo ip netns add client_ns;
+sudo ip link set ens1f1 netns client_ns;
+sudo ip netns exec client_ns ip addr add 10.50.0.2/24 dev ens1f1;
+sudo ip netns exec client_ns ip link set dev ens1f1 up;
+sudo ip address add 10.50.0.1/24 dev ens1f0;
+sudo ip netns exec client_ns ping 10.50.0.1 -c3;
+sudo ip netns exec client_ns ip link set dev lo up;
+sudo ip netns exec client_ns ip a;
+ping 10.50.0.2 -c3;

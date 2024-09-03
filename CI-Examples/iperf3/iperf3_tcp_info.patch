@@ -1,0 +1,107 @@
+diff --git a/src/iperf.h b/src/iperf.h
+index e010c2d..9c349cd 100644
+--- a/src/iperf.h
++++ b/src/iperf.h
+@@ -95,7 +95,7 @@ struct iperf_interval_results
+ 
+     int omitted;
+ #if (defined(linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)) && \
+-	defined(TCP_INFO)
++	 ENABLE_TCP_INFO &&  defined(TCP_INFO)
+     struct tcp_info tcpInfo; /* getsockopt(TCP_INFO) for Linux, {Free,Net,Open}BSD */
+ #else
+     /* Just placeholders, never accessed. */
+diff --git a/src/tcp_info.c b/src/tcp_info.c
+index 160063c..579c1f8 100644
+--- a/src/tcp_info.c
++++ b/src/tcp_info.c
+@@ -61,7 +61,7 @@ int
+ has_tcpinfo(void)
+ {
+ #if (defined(linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)) \
+-	&& defined(TCP_INFO)
++	&& ENABLE_TCP_INFO && defined(TCP_INFO)
+     return 1;
+ #else
+     return 0;
+@@ -72,7 +72,7 @@ has_tcpinfo(void)
+ int
+ has_tcpinfo_retransmits(void)
+ {
+-#if defined(linux) && defined(TCP_MD5SIG)
++#if defined(linux) && ENABLE_TCP_INFO && defined(TCP_MD5SIG)
+     /* TCP_MD5SIG doesn't actually have anything to do with TCP
+     ** retransmits, it just showed up in the same rev of the header
+     ** file.  If it's present then struct tcp_info has the
+@@ -95,7 +95,7 @@ void
+ save_tcpinfo(struct iperf_stream *sp, struct iperf_interval_results *irp)
+ {
+ #if (defined(linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)) && \
+-	defined(TCP_INFO)
++	ENABLE_TCP_INFO && defined(TCP_INFO)
+     socklen_t tcp_info_length = sizeof(struct tcp_info);
+ 
+     if (getsockopt(sp->socket, IPPROTO_TCP, TCP_INFO, (void *)&irp->tcpInfo, &tcp_info_length) < 0)
+@@ -114,7 +114,7 @@ save_tcpinfo(struct iperf_stream *sp, struct iperf_interval_results *irp)
+ long
+ get_total_retransmits(struct iperf_interval_results *irp)
+ {
+-#if defined(linux) && defined(TCP_MD5SIG)
++#if defined(linux) && defined(TCP_MD5SIG) && ENABLE_TCP_INFO
+     return irp->tcpInfo.tcpi_total_retrans;
+ #elif defined(__FreeBSD__) && __FreeBSD_version >= 600000
+     return irp->tcpInfo.tcpi_snd_rexmitpack;
+@@ -132,7 +132,7 @@ get_total_retransmits(struct iperf_interval_results *irp)
+ long
+ get_snd_cwnd(struct iperf_interval_results *irp)
+ {
+-#if defined(linux) && defined(TCP_MD5SIG)
++#if defined(linux) && defined(TCP_MD5SIG) && ENABLE_TCP_INFO
+     return (long)irp->tcpInfo.tcpi_snd_cwnd * irp->tcpInfo.tcpi_snd_mss;
+ #elif defined(__FreeBSD__) && __FreeBSD_version >= 600000
+     return irp->tcpInfo.tcpi_snd_cwnd;
+@@ -154,7 +154,7 @@ get_snd_wnd(struct iperf_interval_results *irp)
+ {
+ #if !defined(HAVE_TCP_INFO_SND_WND)
+     return -1;
+-#elif defined(linux) && defined(TCP_MD5SIG)
++#elif defined(linux) && defined(TCP_MD5SIG) && ENABLE_TCP_INFO
+     return irp->tcpInfo.tcpi_snd_wnd;
+ #elif defined(__FreeBSD__) && __FreeBSD_version >= 600000
+     return irp->tcpInfo.tcpi_snd_wnd;
+@@ -174,7 +174,7 @@ get_snd_wnd(struct iperf_interval_results *irp)
+ long
+ get_rtt(struct iperf_interval_results *irp)
+ {
+-#if defined(linux) && defined(TCP_MD5SIG)
++#if defined(linux) && defined(TCP_MD5SIG) && ENABLE_TCP_INFO
+     return irp->tcpInfo.tcpi_rtt;
+ #elif defined(__FreeBSD__) && __FreeBSD_version >= 600000
+     return irp->tcpInfo.tcpi_rtt;
+@@ -192,7 +192,7 @@ get_rtt(struct iperf_interval_results *irp)
+ long
+ get_rttvar(struct iperf_interval_results *irp)
+ {
+-#if defined(linux) && defined(TCP_MD5SIG)
++#if defined(linux) && defined(TCP_MD5SIG) && ENABLE_TCP_INFO
+     return irp->tcpInfo.tcpi_rttvar;
+ #elif defined(__FreeBSD__) && __FreeBSD_version >= 600000
+     return irp->tcpInfo.tcpi_rttvar;
+@@ -210,7 +210,7 @@ get_rttvar(struct iperf_interval_results *irp)
+ long
+ get_pmtu(struct iperf_interval_results *irp)
+ {
+-#if defined(linux) && defined(TCP_MD5SIG)
++#if defined(linux) && defined(TCP_MD5SIG) && ENABLE_TCP_INFO
+     return irp->tcpInfo.tcpi_pmtu;
+ #else
+     return -1;
+@@ -221,7 +221,7 @@ get_pmtu(struct iperf_interval_results *irp)
+ void
+ build_tcpinfo_message(struct iperf_interval_results *r, char *message)
+ {
+-#if defined(linux) && defined(TCP_INFO)
++#if defined(linux) && defined(TCP_INFO) && ENABLE_TCP_INFO
+     sprintf(message, report_tcpInfo, r->tcpInfo.tcpi_snd_cwnd, r->tcpInfo.tcpi_snd_ssthresh,
+ 	    r->tcpInfo.tcpi_rcv_ssthresh, r->tcpInfo.tcpi_unacked, r->tcpInfo.tcpi_sacked,
+ 	    r->tcpInfo.tcpi_lost, r->tcpInfo.tcpi_retrans, r->tcpInfo.tcpi_fackets,

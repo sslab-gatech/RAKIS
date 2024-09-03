@@ -45,6 +45,9 @@ enum libos_handle_type {
     /* Special handles: */
     TYPE_EPOLL,      /* epoll handles, see `libos_epoll.c` */
     TYPE_EVENTFD,    /* eventfd handles, used by `eventfd` filesystem */
+#ifdef RAKIS
+    TYPE_RAKIS,      /* rakis handles, used by `rakis` */
+#endif
 };
 
 struct libos_pipe_handle {
@@ -200,6 +203,9 @@ struct libos_handle {
 
         struct libos_epoll_handle epoll;         /* TYPE_EPOLL */
         struct { bool is_semaphore; } eventfd;   /* TYPE_EVENTFD */
+#ifdef RAKIS
+        int rakis_sock;                          /* TYPE_RAKIS */
+#endif
     } info;
 
     struct libos_dir_handle dir_info;

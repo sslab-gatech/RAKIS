@@ -25,6 +25,7 @@ install_headers('sgx_arch.h', 'sgx_attest.h', subdir : 'gramine')
 cflags_pal_sgx = [
     cflags_pal_common,
     '-DHOST_TYPE=Linux-SGX',
+    '-DRAKIS_SGX_HOST',
     # Some of the code uses `alignof` on expressions, which is a GNU extension. Silence Clang - it
     # complains but does support it.
     '-Wno-gnu-alignof-expression',
@@ -85,6 +86,7 @@ libpal_sgx = shared_library('pal',
     'pal_sockets.c',
     'pal_streams.c',
     'pal_threading.c',
+    pal_rakis_sgx_sources,
     pal_sgx_asm_offsets_h,
     pal_common_sources,
     pal_linux_common_sources_enclave,
@@ -179,6 +181,13 @@ libpal_sgx_host = executable('loader',
     install: true,
     install_dir: pkglibdir / 'sgx',
 )
+
+if enable_install_with_caps
+    meson.add_install_script('/bin/sh', '-c',
+        'sudo setcap cap_net_raw,cap_bpf+p "$MESON_INSTALL_DESTDIR_PREFIX"/@0@'.format(
+            join_paths(pkglibdir, 'sgx/loader')))
+endif
+
 
 libpal_sgx_dep = declare_dependency(
     link_with: libpal_sgx,

@@ -1,6 +1,5 @@
 /build
 /install
-/obj-*
 
 # No editor backup files.
 *.sw*
@@ -49,3 +48,6 @@ TAGS
 cscope.*
 ncscope.*
 *cscope*
+
+.cache/
+compile_commands.json

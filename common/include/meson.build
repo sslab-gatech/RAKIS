@@ -3,4 +3,5 @@ common_inc = [
         '.',
         'arch' / host_machine.cpu_family(),
     ),
+    rakis_includes,
 ]

@@ -13,6 +13,7 @@
 #include "libos_socket.h"
 #include "libos_table.h"
 #include "linux_abi/errors.h"
+#include "rakis/rakis_socket.h"
 
 /*
  * Sockets can be in 4 states: NEW, BOUND, LISTENING and CONNECTED.
@@ -85,6 +86,16 @@ struct libos_handle* get_new_socket_handle(int family, int type, int protocol,
 }
 
 long libos_syscall_socket(int family, int type, int protocol) {
+
+#ifdef RAKIS
+  if (RAKIS_IS_ENABLED() &&
+      family == AF_INET && 
+      (((type & SOCK_TYPE_MASK) == SOCK_DGRAM) ||
+       (type & SOCK_TYPE_MASK) == SOCK_RAW)){
+    return rakis_socket(family, type, protocol);
+  }
+#endif
+
     switch (family) {
         case AF_UNIX:
         case AF_INET:
@@ -289,6 +300,14 @@ long libos_syscall_bind(int fd, void* addr, int _addrlen) {
         return -EBADF;
     }
 
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_bind(handle, addr, addrlen);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
     if (handle->type != TYPE_SOCK) {
         put_handle(handle);
         return -ENOTSOCK;
@@ -330,6 +349,14 @@ long libos_syscall_listen(int fd, int backlog) {
     if (!handle) {
         return -EBADF;
     }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_listen(handle, backlog);
+      put_handle(handle);
+      return ret;
+    }
+#endif
 
     if (handle->type != TYPE_SOCK) {
         put_handle(handle);
@@ -392,6 +419,14 @@ static int do_accept(int fd, void* addr, int* addrlen_ptr, int flags) {
     }
 
     int ret = 0;
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_accept(handle, addr, addrlen_ptr, flags);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
     if (handle->type != TYPE_SOCK) {
         put_handle(handle);
         return -ENOTSOCK;
@@ -475,6 +510,14 @@ long libos_syscall_connect(int fd, void* addr, int _addrlen) {
     if (!handle) {
         return -EBADF;
     }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_connect(handle, addr, addrlen);
+      put_handle(handle);
+      return ret;
+    }
+#endif
 
     if (handle->type != TYPE_SOCK) {
         put_handle(handle);
@@ -707,6 +750,14 @@ long libos_syscall_sendto(int fd, void* buf, size_t len, unsigned int flags, voi
         return -EBADF;
     }
 
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ssize_t rakis_ret = rakis_sendto(handle, buf, len, flags, addr, addrlen);
+      put_handle(handle);
+      return rakis_ret;
+    }
+#endif
+
     struct iovec iov = {
         .iov_base = buf,
         .iov_len = len,
@@ -727,6 +778,14 @@ long libos_syscall_sendmsg(int fd, struct msghdr* msg, unsigned int flags) {
     if (!handle) {
         return -EBADF;
     }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ssize_t rakis_ret = rakis_sendmsg(handle, msg, flags);
+      put_handle(handle);
+      return rakis_ret;
+    }
+#endif
 
     size_t addrlen = msg->msg_name ? msg->msg_namelen : 0;
     ret = do_sendmsg(handle, msg->msg_iov, msg->msg_iovlen, msg->msg_control, msg->msg_controllen,
@@ -750,6 +809,15 @@ long libos_syscall_sendmmsg(int fd, struct mmsghdr* msg, unsigned int vlen, unsi
     if (!handle) {
         return -EBADF;
     }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ssize_t rakis_ret = rakis_sendmmsg(handle, msg, vlen, flags);
+      put_handle(handle);
+      return rakis_ret;
+    }
+#endif
+
 
     ssize_t ret;
     for (size_t i = 0; i < vlen; i++) {
@@ -955,6 +1023,14 @@ long libos_syscall_recvfrom(int fd, void* buf, size_t len, unsigned int flags, v
         return -EBADF;
     }
 
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ssize_t rakis_ret = rakis_recvfrom(handle, buf, len, flags, addr, _addrlen);
+      put_handle(handle);
+      return rakis_ret;
+    }
+#endif
+
     struct iovec iov = {
         .iov_base = buf,
         .iov_len = len,
@@ -978,6 +1054,14 @@ long libos_syscall_recvmsg(int fd, struct msghdr* msg, unsigned int flags) {
     if (!handle) {
         return -EBADF;
     }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ssize_t rakis_ret = rakis_recvmsg(handle, msg, flags);
+      put_handle(handle);
+      return rakis_ret;
+    }
+#endif
 
     size_t addrlen = msg->msg_name ? msg->msg_namelen : 0;
     ret = do_recvmsg(handle, msg->msg_iov, msg->msg_iovlen, msg->msg_control, &msg->msg_controllen,
@@ -1021,6 +1105,14 @@ long libos_syscall_recvmmsg(int fd, struct mmsghdr* msg, unsigned int vlen, unsi
         return -EBADF;
     }
 
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ssize_t rakis_ret = rakis_recvmmsg(handle, msg, vlen, flags);
+      put_handle(handle);
+      return rakis_ret;
+    }
+#endif
+
     ssize_t ret;
     for (size_t i = 0; i < vlen; i++) {
         struct msghdr* hdr = &msg[i].msg_hdr;
@@ -1062,12 +1154,20 @@ long libos_syscall_shutdown(int fd, int how) {
         return -EBADF;
     }
 
+    int ret;
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_shutdown(handle, how);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
     if (handle->type != TYPE_SOCK) {
         put_handle(handle);
         return -ENOTSOCK;
     }
 
-    int ret;
     struct libos_sock_handle* sock = &handle->info.sock;
 
     lock(&sock->lock);
@@ -1146,6 +1246,14 @@ long libos_syscall_getsockname(int fd, void* addr, int* _addrlen) {
     }
 
     int ret;
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_getsockname(handle, addr, _addrlen);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
     if (handle->type != TYPE_SOCK) {
         ret = -ENOTSOCK;
         goto out;
@@ -1189,12 +1297,20 @@ long libos_syscall_getpeername(int fd, void* addr, int* _addrlen) {
         return -EBADF;
     }
 
+    int ret;
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_getpeername(handle, addr, _addrlen);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
     if (handle->type != TYPE_SOCK) {
         put_handle(handle);
         return -ENOTSOCK;
     }
 
-    int ret;
     struct libos_sock_handle* sock = &handle->info.sock;
 
     lock(&sock->lock);
@@ -1242,10 +1358,6 @@ long libos_syscall_setsockopt(int fd, int level, int optname, char* optval, int 
     if (!handle) {
         return -EBADF;
     }
-    if (handle->type != TYPE_SOCK) {
-        ret = -ENOTSOCK;
-        goto out;
-    }
     if (optlen < 0) {
         ret = -EINVAL;
         goto out;
@@ -1254,6 +1366,19 @@ long libos_syscall_setsockopt(int fd, int level, int optname, char* optval, int 
     if (!is_user_memory_readable(optval, len)) {
         ret = -EFAULT;
         goto out;
+    }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_setsockopt(handle, level, optname, optval, len);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
+    if (handle->type != TYPE_SOCK) {
+      ret = -ENOTSOCK;
+      goto out;
     }
 
     struct libos_sock_handle* sock = &handle->info.sock;
@@ -1344,10 +1469,6 @@ long libos_syscall_getsockopt(int fd, int level, int optname, char* optval, int*
     if (!handle) {
         return -EBADF;
     }
-    if (handle->type != TYPE_SOCK) {
-        ret = -ENOTSOCK;
-        goto out;
-    }
 
     if (!is_user_memory_writable(optlen, sizeof(*optlen))) {
         ret = -EFAULT;
@@ -1361,6 +1482,19 @@ long libos_syscall_getsockopt(int fd, int level, int optname, char* optval, int*
     if (!is_user_memory_writable(optval, len)) {
         ret = -EFAULT;
         goto out;
+    }
+
+#ifdef RAKIS
+    if (handle->type == TYPE_RAKIS) {
+      ret = rakis_getsockopt(handle, level, optname, optval, optlen);
+      put_handle(handle);
+      return ret;
+    }
+#endif
+
+    if (handle->type != TYPE_SOCK) {
+      ret = -ENOTSOCK;
+      goto out;
     }
 
     struct libos_sock_handle* sock = &handle->info.sock;

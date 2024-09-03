@@ -2,6 +2,7 @@ cflags_pal_common = [
     '-DIN_PAL',
     '-ffreestanding',
     '-fPIC',
+    rakis_cflag_def,
 ]
 
 pal_common_sources = files(
@@ -19,6 +20,8 @@ pal_common_sources = files(
     'printf.c',
     'slab.c',
 )
+
+pal_common_sources += pal_rakis_sources
 
 # Arch-specific meson.build must define the following Meson variables:
 #   - `pal_common_sources_arch` - a list of arch-specific sources.

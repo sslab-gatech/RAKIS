@@ -1,0 +1,84 @@
+diff --git a/UnixBench/src/fstime.c b/UnixBench/src/fstime.c
+index 99aa139..71bbf6a 100644
+--- a/UnixBench/src/fstime.c
++++ b/UnixBench/src/fstime.c
+@@ -42,14 +42,14 @@ char SCCSid[] = "@(#) @(#)fstime.c:3.5 -- 5/15/91 19:30:19";
+ 
+ #define SECONDS 10
+ 
+-#define MAX_BUFSIZE 8192
++#define MAX_BUFSIZE 16384
+ 
+ /* This must be set to the smallest BUFSIZE or 1024, whichever is smaller */
+ #define COUNTSIZE 256
+ #define HALFCOUNT (COUNTSIZE/2)         /* Half of COUNTSIZE */
+ 
+-char FNAME0[] = "dummy0-XXXXXXXXXX";
+-char FNAME1[] = "dummy1-XXXXXXXXXX";
++char FNAME0[] = "dummy0";
++char FNAME1[] = "dummy1";
+ 
+ int w_test(int timeSecs);
+ int r_test(int timeSecs);
+@@ -171,20 +171,6 @@ char    *argv[];
+     */
+ 
+     int pid = getpid();
+-    snprintf(FNAME0 + sizeof("dummy0"), sizeof(FNAME0) - sizeof("dummy0"), "%d", pid);
+-    snprintf(FNAME1 + sizeof("dummy1"), sizeof(FNAME1) - sizeof("dummy1"), "%d", pid);
+-
+-    if((f = creat(FNAME0, 0600)) == -1) {
+-            perror("fstime: creat");
+-            exit(1);
+-    }
+-    close(f);
+-
+-    if((g = creat(FNAME1, 0600)) == -1) {
+-            perror("fstime: creat");
+-            exit(1);
+-    }
+-    close(g);
+ 
+     if( (f = open(FNAME0, 2)) == -1) {
+             perror("fstime: open");
+@@ -322,10 +308,10 @@ int r_test(int timeSecs)
+         extern int sigalarm;
+ 
+         /* Sync and let it settle */
+-        sync();
+-        sleep(2);
+-        sync();
+-        sleep(2);
++        // sync();
++        // sleep(2);
++        // sync();
++        // sleep(2);
+ 
+         /* rewind */
+         errno = 0;
+@@ -386,10 +372,10 @@ int c_test(int timeSecs)
+         double start, end;
+         extern int sigalarm;
+ 
+-        sync();
+-        sleep(2);
+-        sync();
+-        sleep(1);
++        // sync();
++        // sleep(2);
++        // sync();
++        // sleep(1);
+ 
+         /* rewind */
+         errno = 0;
+@@ -465,6 +451,8 @@ void stop_count(void)
+ 
+ void clean_up(void)
+ {
+-        unlink(FNAME0);
+-        unlink(FNAME1);
++        close(f);
++        close(g);
++        // unlink(FNAME0);
++        // unlink(FNAME1);
+ }

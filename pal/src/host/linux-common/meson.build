@@ -14,6 +14,8 @@ pal_linux_common_sources_host = files(
     'topo_info.c',
 )
 
+pal_linux_common_sources_host += pal_rakis_linux_common_sources
+
 # Arch-specific meson.build must define the following Meson variables:
 #   - `pal_linux_common_sources_host_arch` - a list of arch-specific sources.
 subdir('arch')

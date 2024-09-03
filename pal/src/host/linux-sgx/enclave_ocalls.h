@@ -92,7 +92,7 @@ int ocall_gettime(uint64_t* microsec);
 
 void ocall_sched_yield(void);
 
-int ocall_poll(struct pollfd* fds, size_t nfds, uint64_t* timeout_us);
+int ocall_poll(struct pollfd* fds, size_t nfds, uint64_t* timeout_us, bool* wakeup);
 
 int ocall_rename(const char* oldpath, const char* newpath);
 
@@ -131,3 +131,9 @@ int ocall_get_quote(const sgx_spid_t* spid, bool linkable, const sgx_report_t* r
 int ocall_edmm_restrict_pages_perm(uint64_t addr, size_t count, uint64_t prot);
 int ocall_edmm_modify_pages_type(uint64_t addr, size_t count, uint64_t type);
 int ocall_edmm_remove_pages(uint64_t addr, size_t count);
+
+#ifdef RAKIS
+#include "rakis/pal.h"
+int ocall_RAKISInit(struct rakis_config* rakis_config, struct rakis_pal* rakis_pal);
+noreturn void ocall_RAKISMonitorThreadStart(struct rakis_monitor_pal* rakis_monitor_pal);
+#endif

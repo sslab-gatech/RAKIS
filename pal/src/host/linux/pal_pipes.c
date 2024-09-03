@@ -227,7 +227,12 @@ static int64_t pipe_read(PAL_HANDLE handle, uint64_t offset, uint64_t len, void*
     if (handle->hdr.type != PAL_TYPE_PIPECLI && handle->hdr.type != PAL_TYPE_PIPE)
         return -PAL_ERROR_NOTCONNECTION;
 
-    ssize_t bytes = DO_SYSCALL(read, handle->pipe.fd, buffer, len);
+    ssize_t bytes;
+    if(RAKIS_IS_READY())
+      bytes = rakis_io_uring_read(handle->pipe.fd, buffer, len, -1);
+    else
+      bytes = DO_SYSCALL(read, handle->pipe.fd, buffer, len);
+
     if (bytes < 0)
         return unix_to_pal_error(bytes);
 
@@ -251,7 +256,12 @@ static int64_t pipe_write(PAL_HANDLE handle, uint64_t offset, size_t len, const 
     if (handle->hdr.type != PAL_TYPE_PIPECLI && handle->hdr.type != PAL_TYPE_PIPE)
         return -PAL_ERROR_NOTCONNECTION;
 
-    ssize_t bytes = DO_SYSCALL(write, handle->pipe.fd, buffer, len);
+    ssize_t bytes;
+    if (RAKIS_IS_READY())
+      bytes = rakis_io_uring_write(handle->pipe.fd, buffer, len, offset);
+    else
+      bytes = DO_SYSCALL(write, handle->pipe.fd, buffer, len);
+
     if (bytes < 0)
         return unix_to_pal_error(bytes);
 

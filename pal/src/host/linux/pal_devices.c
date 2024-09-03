@@ -19,6 +19,8 @@
 #include "pal_linux.h"
 #include "perm.h"
 
+#include "rakis/io_uring.h"
+
 static int dev_open(PAL_HANDLE* handle, const char* type, const char* uri, enum pal_access access,
                     pal_share_flags_t share, enum pal_create_mode create,
                     pal_stream_options_t options) {
@@ -93,7 +95,12 @@ static int64_t dev_read(PAL_HANDLE handle, uint64_t offset, uint64_t size, void*
     if (handle->dev.fd == PAL_IDX_POISON)
         return -PAL_ERROR_DENIED;
 
-    int64_t bytes = DO_SYSCALL(read, handle->dev.fd, buffer, size);
+    int64_t bytes;
+    if(RAKIS_IS_READY())
+      bytes = rakis_io_uring_read(handle->dev.fd, buffer, size, -1);
+    else
+      bytes = DO_SYSCALL(read, handle->dev.fd, buffer, size);
+
     return bytes < 0 ? unix_to_pal_error(bytes) : bytes;
 }
 
@@ -107,7 +114,12 @@ static int64_t dev_write(PAL_HANDLE handle, uint64_t offset, uint64_t size, cons
     if (handle->dev.fd == PAL_IDX_POISON)
         return -PAL_ERROR_DENIED;
 
-    int64_t bytes = DO_SYSCALL(write, handle->dev.fd, buffer, size);
+    int64_t bytes;
+    if(RAKIS_IS_READY()){
+      bytes = rakis_io_uring_write(handle->dev.fd, buffer, size, -1);
+    }else{
+      bytes = DO_SYSCALL(write, handle->dev.fd, buffer, size);
+    }
     return bytes < 0 ? unix_to_pal_error(bytes) : bytes;
 }
 

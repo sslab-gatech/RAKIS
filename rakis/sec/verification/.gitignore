@@ -1,0 +1,9 @@
+build/
+.project_root
+rakis-concrete
+rakis-sym.bc
+compile_commands.json
+klee/
+klee-uclibc/
+klee-last
+klee-out-*/

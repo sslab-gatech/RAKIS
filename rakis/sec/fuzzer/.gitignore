@@ -1,0 +1,6 @@
+AFLplusplus/
+build/
+.project_root
+rakis-fuzz
+fuzz_output*
+compile_commands.json

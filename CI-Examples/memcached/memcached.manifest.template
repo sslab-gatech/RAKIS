@@ -6,7 +6,7 @@ libos.entrypoint = "/memcached"
 loader.log_level = "{{ log_level }}"
 
 # the only dependency is libevent.so, found under `/usr/{{ arch_libdir }}`
-loader.env.LD_LIBRARY_PATH = "/lib:/usr/{{ arch_libdir }}"
+loader.env.LD_LIBRARY_PATH = "/libevent/lib/:/lib:/usr/{{ arch_libdir }}"
 
 # Gramine by default reports the root user (uid = 0) to applications. This default behavior forces
 # Memcached to attempt to drop privileges and assume some non-privileged user ID via setuid(), which
@@ -15,27 +15,35 @@ loader.env.LD_LIBRARY_PATH = "/lib:/usr/{{ arch_libdir }}"
 loader.uid = 1000
 loader.gid = 1000
 
+loader.insecure__use_cmdline_argv = true
 sys.enable_sigterm_injection = true
 
 fs.mounts = [
   { path = "/memcached", uri = "file:memcached" },
   { path = "/lib", uri = "file:{{ gramine.runtimedir() }}" },
   { path = "/usr/{{ arch_libdir }}", uri = "file:/usr/{{ arch_libdir }}" },
+  { path = "/libevent/lib/", uri = "file:{{ libevent_dir }}" },
 ]
-
-sgx.debug = true
+sgx.debug = false
 sgx.edmm_enable = {{ 'true' if env.get('EDMM', '0') == '1' else 'false' }}
-sgx.max_threads = 16
+sgx.max_threads = 24
 
 # Memcached does not fail explicitly when enclave memory is exhausted. Instead, Memcached goes into
 # infinite loop without a listening socket. You can trigger this incorrect behavior by increasing
 # the number of threads to 12 (each thread requires 128MB of memory): `memcached -t 12`. This is an
 # issue in Memcached source code, not related to Gramine.
-sgx.enclave_size = "1024M"
+sgx.enclave_size = "2G"
 
 sgx.trusted_files = [
   "file:memcached",
   "file:{{ gramine.runtimedir() }}/",
   "file:/usr/{{ arch_libdir }}/",
   "file:{{ gramine.libos }}",
+  "file:{{ libevent_dir }}",
 ]
+
+rakis.enabled = true
+rakis.net_threads_num = 4
+rakis.netifs = [ { interface_name = "ens3f0", ip_addr = "10.50.1.1", gw_addr = "10.50.1.1", netmask = "255.255.255.0", mac_addr = "40:a6:b7:22:7a:c0", xsks = [ { qid = 0, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl-memcached" }, { qid = 1, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl-memcached" }, { qid = 2, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl-memcached" }, { qid = 3, ctrl_prcs_path = "/tmp/rakis-xdp-def-ctrl-memcached" } ] } ]
+rakis.io_uring.io_urings_num = 24
+rakis.arp_table = [ { ip_addr = "10.50.1.2", mac_addr = "40:a6:b7:22:7a:c1" } ]

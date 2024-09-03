@@ -22,6 +22,8 @@
 #include "pal_linux.h"
 #include "ucontext.h"
 
+#include "rakis/rakis.h"
+
 static const int ASYNC_SIGNALS[] = {SIGTERM, SIGCONT};
 
 static int block_signal(int sig, bool block) {
@@ -224,12 +226,14 @@ void signal_setup(bool is_first_process, uintptr_t vdso_start, uintptr_t vdso_en
             goto err;
     }
 
+#if !defined(RAKIS) || !defined(RAKIS_STAT) || RAKIS_STAT_CLOCK_ACCURACY_NS == 0
     if (is_first_process) {
         ret = setup_seccomp(vdso_start, vdso_end);
         if (ret < 0) {
             INIT_FAIL("Setting up seccomp for inline syscall handling failed");
         }
     }
+#endif
 
     return;
 err:

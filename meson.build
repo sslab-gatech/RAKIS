@@ -40,6 +40,12 @@ vtune = get_option('vtune') == 'enabled'
 enable_libgomp = get_option('libgomp') == 'enabled'
 enable_tests = get_option('tests') == 'enabled'
 
+enable_rakis = get_option('rakis') == 'enabled'
+enable_install_with_caps = enable_rakis and get_option('install_with_caps') == 'enabled'
+if enable_rakis and not enable_install_with_caps
+    warning('RAKIS is enabled but installing without needed CAP_NET_RAW & CAP_BPF')
+endif
+
 cc = meson.get_compiler('c')
 host_has_glibc = cc.get_define('__GLIBC__', prefix: '#include <features.h>') != ''
 objcopy = find_program('objcopy')
@@ -277,6 +283,7 @@ endif
 # The compilation
 #
 
+subdir('rakis')
 subdir('common')
 subdir('pal')
 subdir('libos')

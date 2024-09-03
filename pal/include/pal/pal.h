@@ -16,6 +16,12 @@
 
 #include "iovec.h"
 
+#ifdef RAKIS
+#include "rakis/rakis.h"
+#include "rakis/pal.h"
+#include "rakis/io_uring.h"
+#endif
+
 // TODO: fix this (but see pal/include/arch/x86_64/pal_arch.h)
 #define INSIDE_PAL_H
 
@@ -175,6 +181,11 @@ struct pal_public_state {
 
     bool extra_runtime_domain_names_conf;
     struct pal_dns_host_conf dns_host;
+
+#ifdef RAKIS
+    struct rakis_io_uring_pool rakis_io_uring_pool;
+    struct rakis_status* rakis_status;
+#endif
 };
 
 /* We cannot mark this as returning a pointer to `const` object, because LibOS can
@@ -820,7 +831,7 @@ typedef uint32_t pal_wait_flags_t; /* bitfield */
  * \p handle_array can contain empty elements (NULL) which are ignored.
  */
 int PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags_t* events,
-                         pal_wait_flags_t* ret_events, uint64_t* timeout_us);
+                         pal_wait_flags_t* ret_events, uint64_t* timeout_us, bool* wakeup);
 
 /*!
  * \brief Close (deallocate) a PAL handle.
@@ -999,5 +1010,10 @@ void PalDebugMapRemove(void* start_addr);
 /* Describe the code under given address (see `describe_location()` in `callbacks.h`). Without
  * DEBUG, falls back to raw value ("0x1234"). */
 void PalDebugDescribeLocation(uintptr_t addr, char* buf, size_t buf_size);
+
+#ifdef RAKIS
+int PalRAKISInit(struct rakis_config* rakis_config, struct rakis_pal* rakis_pal);
+noreturn void PalRAKISMonitorThreadStart(struct rakis_monitor_pal* rakis_monitor_pal);
+#endif
 
 #undef INSIDE_PAL_H

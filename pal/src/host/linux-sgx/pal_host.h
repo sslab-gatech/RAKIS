@@ -18,6 +18,7 @@
 #include "enclave_tf_structs.h"
 #include "list.h"
 #include "spinlock.h"
+#include "rakis/io_uring.h"
 
 DEFINE_LIST(pal_handle_thread);
 struct pal_handle_thread {
@@ -25,6 +26,7 @@ struct pal_handle_thread {
     void* tcs;
     LIST_TYPE(pal_handle_thread) list;
     void* param;
+    struct rakis_io_uring* rakis_io_uring;
 };
 
 /* RPC streams are encrypted with 256-bit AES keys */

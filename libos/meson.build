@@ -5,6 +5,7 @@ cflags_libos = [
     '-ffreestanding',
 
     '-DIN_LIBOS',
+    rakis_cflag_def,
 ]
 
 cflags_libos += cc.get_supported_arguments(

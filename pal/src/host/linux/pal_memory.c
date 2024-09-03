@@ -73,7 +73,11 @@ static int read_proc_meminfo(const char* key, unsigned long* val) {
 
     ret = -PAL_ERROR_DENIED;
     while (1) {
-        ret = DO_SYSCALL(read, fd, buffer + r, 40 - r);
+        if (RAKIS_IS_READY())
+          ret = rakis_io_uring_read(fd, buffer + r, 40 - r, -1);
+        else
+          ret = DO_SYSCALL(read, fd, buffer + r, 40 - r);
+
         if (ret < 0) {
             ret = -PAL_ERROR_DENIED;
             break;

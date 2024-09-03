@@ -11,13 +11,40 @@
 #include "pal_error.h"
 #include "pal_internal.h"
 #include "pal_linux_error.h"
+#include "rakis/io_uring.h"
 
 /* To avoid expensive malloc/free (due to locking), use stack if the required space is small
  * enough. */
 #define NFDS_LIMIT_TO_USE_STACK 16
 
+static int rakis_poll(struct pollfd* fds, size_t nfds, uint64_t* timeout_us, bool* wakeup) {
+  struct __kernel_timespec* u_timeout = NULL;
+  int retval;
+
+  if (timeout_us) {
+    u_timeout = __alloca(sizeof(struct __kernel_timespec));
+
+    uint64_t timeout_ns = (*timeout_us) * TIME_NS_IN_US;
+    u_timeout->tv_sec  = timeout_ns / TIME_NS_IN_S;
+    u_timeout->tv_nsec = timeout_ns % TIME_NS_IN_S;
+  }
+
+  retval = rakis_io_uring_poll(fds, nfds, u_timeout, wakeup);
+
+  if (retval == -EIO) {
+    return retval;
+  }
+
+  if (retval == -ETIME) {
+    retval = 0;
+    *timeout_us = 0;
+  }
+
+  return retval;
+}
+
 int _PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags_t* events,
-                          pal_wait_flags_t* ret_events, uint64_t* timeout_us) {
+                          pal_wait_flags_t* ret_events, uint64_t* timeout_us, bool* wakeup) {
     int ret;
     uint64_t remaining_time_us = timeout_us ? *timeout_us : 0;
 
@@ -58,6 +85,16 @@ int _PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags
         }
     }
 
+    if (RAKIS_IS_READY()) {
+      ret = rakis_poll(fds, count, timeout_us, wakeup);
+      if (ret != -EIO) {
+        goto rakis_no_fallback;
+      }
+      if (timeout_us) {
+        remaining_time_us = *timeout_us;
+      }
+    }
+
     struct timespec* timeout = NULL;
     struct timespec end_time = { 0 };
     if (timeout_us) {
@@ -78,6 +115,8 @@ int _PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags
         }
         remaining_time_us = (uint64_t)diff / TIME_NS_IN_US;
     }
+
+rakis_no_fallback:
 
     if (ret < 0) {
         ret = unix_to_pal_error(ret);

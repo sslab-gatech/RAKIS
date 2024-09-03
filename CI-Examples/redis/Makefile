@@ -32,9 +32,9 @@ GRAMINE_LOG_LEVEL = error
 endif
 
 .PHONY: all
-all: redis-server redis-server.manifest
+all: redis-server redis-server.manifest redis-benchmark
 ifeq ($(SGX),1)
-all: redis-server.manifest.sgx redis-server.sig
+all: redis-server.manifest.sgx redis-server.sig redis-benchmark
 endif
 
 ############################## REDIS EXECUTABLE ###############################
@@ -98,29 +98,54 @@ sgx_outputs: redis-server.manifest $(SRCDIR)/src/redis-server
 redis-server: $(SRCDIR)/src/redis-server
 	cp $< $@
 
-############################## RUNNING TESTS ##################################
-
-.PHONY: start-native-server
-start-native-server: all
-	./redis-server --save '' --protected-mode no
-
-ifeq ($(SGX),)
-GRAMINE = gramine-direct
-else
-GRAMINE = gramine-sgx
-endif
-
-# Note that command-line arguments are hardcoded in the manifest file.
-.PHONY: start-gramine-server
-start-gramine-server: all
-	$(GRAMINE) redis-server
+redis-benchmark: $(SRCDIR)/src/redis-benchmark
+	cp $< $@
 
 ################################## CLEANUP ####################################
 
 .PHONY: clean
 clean:
-	$(RM) *.token *.sig *.manifest.sgx *.manifest redis-server *.rdb
+	$(RM) *.token *.sig *.manifest.sgx *.manifest redis-server *.rdb redis-benchmark
 
 .PHONY: distclean
 distclean: clean
 	$(RM) -r $(SRCDIR) redis.tar.gz
+
+eurosys-reproduce-server-%-sgx: export SGX=1
+
+eurosys-reproduce-server-gramine-%: export PATH := $(HOME)/.local/gramine/bin:$(PATH)
+eurosys-reproduce-server-gramine-%: export PYTHONPATH := $(HOME)/.local/gramine/lib/python3.10/site-packages:$(PYTHONPATH)
+eurosys-reproduce-server-gramine-%: export PKG_CONFIG_PATH := $(HOME)/.local/gramine/lib/x86_64-linux-gnu/pkgconfig:$(PKG_CONFIG_PATH)
+eurosys-reproduce-server-gramine-%: export SETTING := Gramine
+
+eurosys-reproduce-server-rakis-%: export PATH := $(HOME)/.local/rakis/bin:$(PATH)
+eurosys-reproduce-server-rakis-%: export PYTHONPATH := $(HOME)/.local/rakis/lib/python3.10/site-packages:$(PYTHONPATH)
+eurosys-reproduce-server-rakis-%: export PKG_CONFIG_PATH := $(HOME)/.local/rakis/lib/x86_64-linux-gnu/pkgconfig:$(PKG_CONFIG_PATH)
+eurosys-reproduce-server-rakis-%: export SETTING := Rakis
+
+eurosys-reproduce-server-native: export NATIVE = 1
+eurosys-reproduce-server-native: export PATH := $(HOME)/.local/rakis/bin:$(PATH)
+eurosys-reproduce-server-native: export PYTHONPATH := $(HOME)/.local/rakis/lib/python3.10/site-packages:$(PYTHONPATH)
+eurosys-reproduce-server-native: export PKG_CONFIG_PATH := $(HOME)/.local/rakis/lib/x86_64-linux-gnu/pkgconfig:$(PKG_CONFIG_PATH)
+
+eurosys-reproduce-server-%: export USE_SELECT = 1
+eurosys-reproduce-server-%: export LD_LIBRARY_PATH := $(LIBEVENT_INS)/lib
+eurosys-reproduce-server-%: clean
+	$(MAKE) eurosys-reproduce-run-server
+
+eurosys-reproduce-run-server: all
+ifeq ($(NATIVE),1)
+	@echo "\n******************************************"
+	@echo "[*] Running redis in NATIVE setting..."
+	./redis-server
+
+else ifeq ($(SGX),1)
+	@echo "\n******************************************"
+	@echo "[*] Running redis in $(SETTING)-SGX setting..."
+	gramine-sgx ./redis-server
+
+else
+	@echo "\n******************************************"
+	@echo "[*] Running redis in $(SETTING)-Direct setting..."
+	gramine-direct ./redis-server
+endif

@@ -215,7 +215,7 @@ int _PalVirtualMemoryProtect(void* addr, uint64_t size, pal_prot_flags_t prot);
 /* PalObject calls */
 int _PalObjectClose(PAL_HANDLE object_handle);
 int _PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags_t* events,
-                          pal_wait_flags_t* ret_events, uint64_t* timeout_us);
+                          pal_wait_flags_t* ret_events, uint64_t* timeout_us, bool* wakeup);
 
 /* PalException calls & structures */
 pal_event_handler_t _PalGetExceptionHandler(enum pal_event event);
@@ -288,6 +288,13 @@ void free(void* mem);
 
 int _PalInitDebugStream(const char* path);
 int _PalDebugLog(const void* buf, size_t size);
+
+#ifdef RAKIS
+#include "rakis/rakis.h"
+#include "rakis/pal.h"
+int _PalRAKISInit(struct rakis_config* rakis_config, struct rakis_pal* rakis_pal);
+noreturn void _PalRAKISMonitorThreadStart(struct rakis_monitor_pal* rakis_monitor_pal);
+#endif
 
 // TODO(mkow): We should make it cross-object-inlinable, ideally by enabling LTO, less ideally by
 // pasting it here and making `inline`, but our current linker scripts prevent both.

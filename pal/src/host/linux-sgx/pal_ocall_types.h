@@ -73,6 +73,10 @@ enum {
     OCALL_EDMM_RESTRICT_PAGES_PERM,
     OCALL_EDMM_MODIFY_PAGES_TYPE,
     OCALL_EDMM_REMOVE_PAGES,
+#ifdef RAKIS
+    OCALL_RAKIS_INIT,
+    OCALL_RAKIS_MONITOR_START,
+#endif
     OCALL_NR,
 };
 
@@ -361,5 +365,16 @@ struct ocall_edmm_remove_pages {
     uint64_t addr;
     size_t count;
 };
+
+#ifdef RAKIS
+typedef struct {
+  struct rakis_config* rakis_config;
+  struct rakis_pal* rakis_pal;
+} ms_ocall_rakis_init_t;
+
+typedef struct {
+  struct rakis_monitor_pal* rakis_monitor_pal;
+} ms_ocall_rakis_monitor_t;
+#endif
 
 #pragma pack(pop)

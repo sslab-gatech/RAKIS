@@ -21,6 +21,7 @@ pal_direct_sources = files(
 #   - `pal_direct_lds` - a full path to PAL linker script.
 subdir('arch')
 pal_direct_sources += pal_direct_sources_arch
+pal_direct_sources += pal_rakis_direct_sources
 
 pal_direct_map = custom_target('pal.map[direct]',
     command: [gen_pal_map_prog, '@INPUT@', '@OUTPUT@'],
@@ -104,3 +105,9 @@ endif
 meson.add_install_script('/bin/sh', '-c',
     'ln -sf libpal.so "$MESON_INSTALL_DESTDIR_PREFIX"/@0@'.format(
         pkglibdir / 'direct/loader'))
+
+if enable_install_with_caps
+    meson.add_install_script('/bin/sh', '-c',
+        'sudo setcap cap_net_raw,cap_bpf+p "$MESON_INSTALL_DESTDIR_PREFIX"/@0@'.format(
+            join_paths(pkglibdir, 'direct/libpal.so')))
+endif

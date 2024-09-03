@@ -1,0 +1,8 @@
+/dump*
+/dump.nc
+/mcrypt
+/mcrypt.manifest
+/mcrypt.manifest.sgx
+/mcrypt.sig
+/mcrypt-src/
+/mcrypt-src.tar.gz

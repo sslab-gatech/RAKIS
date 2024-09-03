@@ -18,7 +18,7 @@
 #define NFDS_LIMIT_TO_USE_STACK 16
 
 int _PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags_t* events,
-                          pal_wait_flags_t* ret_events, uint64_t* timeout_us) {
+                          pal_wait_flags_t* ret_events, uint64_t* timeout_us, bool* wakeup) {
     struct pollfd* fds = NULL;
     bool allocate_on_stack = count <= NFDS_LIMIT_TO_USE_STACK;
 
@@ -62,7 +62,7 @@ int _PalStreamsWaitEvents(size_t count, PAL_HANDLE* handle_array, pal_wait_flags
         }
     }
 
-    int ret = ocall_poll(fds, count, timeout_us);
+    int ret = ocall_poll(fds, count, timeout_us, wakeup);
 
     if (ret < 0) {
         ret = unix_to_pal_error(ret);

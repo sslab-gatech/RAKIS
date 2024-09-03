@@ -18,6 +18,8 @@
 #include "pal_internal.h"
 #include "pal_linux_error.h"
 
+#include "rakis/io_uring.h"
+
 static inline int eventfd_type(pal_stream_options_t options) {
     int type = EFD_CLOEXEC;
     if (options & PAL_OPTION_NONBLOCK)
@@ -75,7 +77,11 @@ static int64_t eventfd_pal_read(PAL_HANDLE handle, uint64_t offset, uint64_t len
     if (len < sizeof(uint64_t))
         return -PAL_ERROR_INVAL;
 
-    int64_t bytes = DO_SYSCALL(read, handle->eventfd.fd, buffer, len);
+    int64_t bytes;
+    if(RAKIS_IS_READY())
+      bytes = rakis_io_uring_read(handle->eventfd.fd, buffer, len, -1);
+    else
+      bytes = DO_SYSCALL(read, handle->eventfd.fd, buffer, len);
 
     if (bytes < 0)
         return unix_to_pal_error(bytes);
@@ -94,7 +100,13 @@ static int64_t eventfd_pal_write(PAL_HANDLE handle, uint64_t offset, uint64_t le
     if (len < sizeof(uint64_t))
         return -PAL_ERROR_INVAL;
 
-    int64_t bytes = DO_SYSCALL(write, handle->eventfd.fd, buffer, len);
+    int64_t bytes;
+    if(RAKIS_IS_READY()){
+      bytes = rakis_io_uring_write(handle->eventfd.fd, buffer, len, -1);
+    }else{
+      bytes = DO_SYSCALL(write, handle->eventfd.fd, buffer, len);
+    }
+
     if (bytes < 0)
         return unix_to_pal_error(bytes);
 

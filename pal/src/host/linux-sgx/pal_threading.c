@@ -128,6 +128,10 @@ void _PalThreadYieldExecution(void) {
 noreturn void _PalThreadExit(int* clear_child_tid) {
     struct pal_handle_thread* exiting_thread = GET_ENCLAVE_TCB(thread);
 
+    if (exiting_thread->rakis_io_uring){
+      RAKIS_SET_ATOMIC(&exiting_thread->rakis_io_uring, NULL);
+    }
+
     /* thread is ready to exit, must inform LibOS by erasing clear_child_tid;
      * note that we don't do it now (because this thread still occupies SGX
      * TCS slot) but during handle_thread_reset in assembly code */

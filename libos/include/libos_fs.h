@@ -914,6 +914,9 @@ extern struct libos_fs epoll_builtin_fs;
 extern struct libos_fs eventfd_builtin_fs;
 extern struct libos_fs synthetic_builtin_fs;
 extern struct libos_fs path_builtin_fs;
+#ifdef RAKIS
+extern struct libos_fs rakis_builtin_fs;
+#endif
 
 struct libos_fs* find_fs(const char* name);
 

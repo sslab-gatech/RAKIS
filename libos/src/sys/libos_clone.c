@@ -19,6 +19,7 @@
 #include "linux_abi/sched.h"
 #include "pal.h"
 #include "toml_utils.h"
+#include "rakis/rakis.h"
 
 struct libos_clone_args {
     PAL_HANDLE create_event;
@@ -329,6 +330,14 @@ long libos_syscall_clone(unsigned long flags, unsigned long user_stack_addr, int
             }
             return -EAGAIN;
         }
+
+#ifdef RAKIS
+        if (RAKIS_IS_ENABLED()) {
+          log_error("RAKIS does not support multiprocessing yet");
+          return -1;
+        }
+#endif
+
     }
 
     struct libos_thread* thread = get_new_thread();

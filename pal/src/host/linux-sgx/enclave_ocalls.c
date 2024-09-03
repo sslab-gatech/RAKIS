@@ -34,6 +34,11 @@
 #include "sgx_attest.h"
 #include "spinlock.h"
 
+#ifdef RAKIS
+#include "rakis/pal.h"
+#include "rakis/io_uring.h"
+#endif
+
 /* Check against this limit if the buffer to be allocated fits on the untrusted stack; if not,
  * buffer will be allocated on untrusted heap. Conservatively set this limit to 1/4 of the
  * actual stack size. Currently THREAD_STACK_SIZE = 2MB, so this limit is 512KB.
@@ -472,18 +477,23 @@ ssize_t ocall_read(int fd, void* buf, size_t count) {
         }
     }
 
-    ocall_read_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_read_args),
-                                                  alignof(*ocall_read_args));
-    if (!ocall_read_args) {
+    if(RAKIS_IS_READY()){
+      retval = rakis_io_uring_read(fd, untrusted_buf, count, -1);
+
+    }else{
+      ocall_read_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_read_args),
+          alignof(*ocall_read_args));
+      if (!ocall_read_args) {
         retval = -EPERM;
         goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&ocall_read_args->fd, fd);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_read_args->count, count);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_read_args->buf, untrusted_buf);
+
+      retval = sgx_exitless_ocall(OCALL_READ, ocall_read_args);
     }
-
-    COPY_VALUE_TO_UNTRUSTED(&ocall_read_args->fd, fd);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_read_args->count, count);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_read_args->buf, untrusted_buf);
-
-    retval = sgx_exitless_ocall(OCALL_READ, ocall_read_args);
 
     if (retval < 0 && retval != -EAGAIN && retval != -EWOULDBLOCK && retval != -EBADF &&
             retval != -EINTR && retval != -EINVAL && retval != -EIO && retval != -EISDIR) {
@@ -543,18 +553,23 @@ ssize_t ocall_write(int fd, const void* buf, size_t count) {
         goto out;
     }
 
-    ocall_write_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_write_args),
-                                                   alignof(*ocall_write_args));
-    if (!ocall_write_args) {
+    if(RAKIS_IS_READY()){
+      retval = rakis_io_uring_write(fd, untrusted_buf, count, -1);
+
+    }else{
+      ocall_write_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_write_args),
+          alignof(*ocall_write_args));
+      if (!ocall_write_args) {
         retval = -EPERM;
         goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&ocall_write_args->fd, fd);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_write_args->count, count);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_write_args->buf, untrusted_buf);
+
+      retval = sgx_exitless_ocall(OCALL_WRITE, ocall_write_args);
     }
-
-    COPY_VALUE_TO_UNTRUSTED(&ocall_write_args->fd, fd);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_write_args->count, count);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_write_args->buf, untrusted_buf);
-
-    retval = sgx_exitless_ocall(OCALL_WRITE, ocall_write_args);
 
     if (retval < 0 && retval != -EAGAIN && retval != -EWOULDBLOCK && retval != -EBADF &&
             retval != -EFBIG && retval != -EINTR && retval != -EINVAL && retval != -EIO &&
@@ -597,19 +612,24 @@ ssize_t ocall_pread(int fd, void* buf, size_t count, off_t offset) {
         }
     }
 
-    ocall_pread_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_pread_args),
-                                                   alignof(*ocall_pread_args));
-    if (!ocall_pread_args) {
+    if(RAKIS_IS_READY()){
+      retval = rakis_io_uring_read(fd, untrusted_buf, count, offset);
+
+    } else{
+      ocall_pread_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_pread_args),
+          alignof(*ocall_pread_args));
+      if (!ocall_pread_args) {
         retval = -EPERM;
         goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->fd, fd);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->count, count);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->offset, offset);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->buf, untrusted_buf);
+
+      retval = sgx_exitless_ocall(OCALL_PREAD, ocall_pread_args);
     }
-
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->fd, fd);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->count, count);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->offset, offset);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pread_args->buf, untrusted_buf);
-
-    retval = sgx_exitless_ocall(OCALL_PREAD, ocall_pread_args);
 
     if (retval < 0 && retval != -EAGAIN && retval != -EWOULDBLOCK && retval != -EBADF &&
             retval != -EINTR && retval != -EINVAL && retval != -EIO && retval != -EISDIR &&
@@ -669,19 +689,24 @@ ssize_t ocall_pwrite(int fd, const void* buf, size_t count, off_t offset) {
         goto out;
     }
 
-    ocall_pwrite_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_pwrite_args),
-                                                    alignof(*ocall_pwrite_args));
-    if (!ocall_pwrite_args) {
+    if(RAKIS_IS_READY()){
+      retval = rakis_io_uring_write(fd, untrusted_buf, count, offset);
+
+    }else{
+      ocall_pwrite_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_pwrite_args),
+          alignof(*ocall_pwrite_args));
+      if (!ocall_pwrite_args) {
         retval = -EPERM;
         goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->fd, fd);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->count, count);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->offset, offset);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->buf, untrusted_buf);
+
+      retval = sgx_exitless_ocall(OCALL_PWRITE, ocall_pwrite_args);
     }
-
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->fd, fd);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->count, count);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->offset, offset);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_pwrite_args->buf, untrusted_buf);
-
-    retval = sgx_exitless_ocall(OCALL_PWRITE, ocall_pwrite_args);
 
     if (retval < 0 && retval != -EAGAIN && retval != -EWOULDBLOCK && retval != -EBADF &&
             retval != -EFBIG && retval != -EINTR && retval != -EINVAL && retval != -EIO &&
@@ -1499,13 +1524,20 @@ ssize_t ocall_recv(int sockfd, struct iovec* iov, size_t iov_len, void* addr, si
         size += iov[i].iov_len;
     }
 
-    if ((size + addrlen + controllen) > MAX_UNTRUSTED_STACK_BUF) {
+    bool using_rakis = RAKIS_IS_READY();
+    size_t needed_size = size + addrlen + controllen;
+    if (using_rakis){
+      needed_size += sizeof(struct msghdr) + sizeof(struct iovec) * iov_len;
+    }
+
+    if (needed_size > MAX_UNTRUSTED_STACK_BUF) {
         /* Buffer is too big for untrusted stack - use untrusted heap instead. */
         retval = ocall_mmap_untrusted_cache(ALLOC_ALIGN_UP(size), &obuf, &need_munmap);
         if (retval < 0) {
             goto out;
         }
         is_obuf_mapped = true;
+        using_rakis = false;
     } else {
         obuf = sgx_alloc_on_ustack(size);
         if (!obuf) {
@@ -1514,29 +1546,64 @@ ssize_t ocall_recv(int sockfd, struct iovec* iov, size_t iov_len, void* addr, si
         }
     }
 
-    ocall_recv_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_recv_args),
-                                                  alignof(*ocall_recv_args));
-    if (!ocall_recv_args) {
-        retval = -EPERM;
-        goto out;
-    }
-
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->sockfd, sockfd);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->count, size);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->addrlen, addrlen);
     void* untrusted_addr = addr ? sgx_alloc_on_ustack_aligned(addrlen, alignof(*addr)) : NULL;
     void* untrusted_control = control ? sgx_alloc_on_ustack(controllen) : NULL;
     if ((addr && !untrusted_addr) || (control && !untrusted_control)) {
-        retval = -EPERM;
-        goto out;
+      retval = -EPERM;
+      goto out;
     }
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->buf, obuf);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->addr, untrusted_addr);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->control, untrusted_control);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->controllen, controllen);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->flags, flags);
 
-    retval = sgx_exitless_ocall(OCALL_RECV, ocall_recv_args);
+    if (using_rakis){
+      struct msghdr* msghdr = sgx_alloc_on_ustack_aligned(sizeof(struct msghdr), alignof(struct msghdr));
+      if (!msghdr) {
+          retval = -EPERM;
+          goto out;
+      }
+
+      struct iovec* untrusted_iov = sgx_alloc_on_ustack_aligned(sizeof(struct iovec) * iov_len,
+                                                                alignof(struct iovec));
+      if (!untrusted_iov) {
+          retval = -EPERM;
+          goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_iov, untrusted_iov);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_iovlen, iov_len);
+
+      void* iovec_bufs = obuf;
+      for (size_t i = 0; i < iov_len; i++) {
+        COPY_VALUE_TO_UNTRUSTED(&untrusted_iov[i].iov_base, iovec_bufs);
+        COPY_VALUE_TO_UNTRUSTED(&untrusted_iov[i].iov_len, iov[i].iov_len);
+        iovec_bufs += iov[i].iov_len;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_name, untrusted_addr);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_namelen, addrlen);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_control, untrusted_control);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_controllen, controllen);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_flags, flags);
+
+      retval = rakis_io_uring_recv(sockfd, msghdr);
+
+    } else {
+      ocall_recv_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_recv_args),
+                                                    alignof(*ocall_recv_args));
+      if (!ocall_recv_args) {
+          retval = -EPERM;
+          goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->sockfd, sockfd);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->count, size);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->addrlen, addrlen);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->buf, obuf);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->addr, untrusted_addr);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->control, untrusted_control);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->controllen, controllen);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_recv_args->flags, flags);
+
+      retval = sgx_exitless_ocall(OCALL_RECV, ocall_recv_args);
+    }
 
     if (retval < 0) {
         if (retval != -EAGAIN && retval != -EWOULDBLOCK && retval != -EBADF
@@ -1618,12 +1685,19 @@ ssize_t ocall_send(int sockfd, const struct iovec* iov, size_t iov_len, const vo
         size += iov[i].iov_len;
     }
 
-    if ((size + addrlen + controllen) > MAX_UNTRUSTED_STACK_BUF) {
+    bool using_rakis = RAKIS_IS_READY();
+    size_t needed_size = size + addrlen + controllen;
+    if (using_rakis){
+      needed_size += sizeof(struct msghdr) + sizeof(struct iovec) * iov_len;
+    }
+
+    if (needed_size > MAX_UNTRUSTED_STACK_BUF) {
         /* Buffer is too big for untrusted stack - use untrusted heap instead. */
         retval = ocall_mmap_untrusted_cache(ALLOC_ALIGN_UP(size), &obuf, &need_munmap);
         if (retval < 0)
             goto out;
         is_obuf_mapped = true;
+        using_rakis = false;
     } else {
         obuf = sgx_alloc_on_ustack(size);
     }
@@ -1632,35 +1706,71 @@ ssize_t ocall_send(int sockfd, const struct iovec* iov, size_t iov_len, const vo
         goto out;
     }
 
-    size = 0;
-    for (size_t i = 0; i < iov_len; i++) {
-        memcpy((char*)obuf + size, iov[i].iov_base, iov[i].iov_len);
-        size += iov[i].iov_len;
-    }
-
-    ocall_send_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_send_args),
-                                                  alignof(*ocall_send_args));
-    if (!ocall_send_args) {
-        retval = -EPERM;
-        goto out;
-    }
-
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->sockfd, sockfd);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->count, size);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->addrlen, addrlen);
     void* untrusted_addr = addr ? sgx_copy_to_ustack(addr, addrlen) : NULL;
     void* untrusted_control = control ? sgx_copy_to_ustack(control, controllen) : NULL;
     if ((addr && !untrusted_addr) || (control && !untrusted_control)) {
-        retval = -EPERM;
-        goto out;
+      retval = -EPERM;
+      goto out;
     }
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->buf, obuf);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->addr, untrusted_addr);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->control, untrusted_control);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->controllen, controllen);
-    COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->flags, flags);
 
-    retval = sgx_exitless_ocall(OCALL_SEND, ocall_send_args);
+    if (using_rakis){
+      struct msghdr* msghdr = sgx_alloc_on_ustack_aligned(sizeof(struct msghdr), alignof(struct msghdr));
+      if (!msghdr) {
+          retval = -EPERM;
+          goto out;
+      }
+
+      struct iovec* untrusted_iov = sgx_alloc_on_ustack_aligned(sizeof(struct iovec) * iov_len,
+                                                                alignof(struct iovec));
+      if (!untrusted_iov) {
+          retval = -EPERM;
+          goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_iov, untrusted_iov);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_iovlen, iov_len);
+
+      void* iovec_bufs = obuf;
+      for (size_t i = 0; i < iov_len; i++) {
+        memcpy(iovec_bufs, iov[i].iov_base, iov[i].iov_len);
+        COPY_VALUE_TO_UNTRUSTED(&untrusted_iov[i].iov_base, iovec_bufs);
+        COPY_VALUE_TO_UNTRUSTED(&untrusted_iov[i].iov_len, iov[i].iov_len);
+        iovec_bufs += iov[i].iov_len;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_name, untrusted_addr);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_namelen, addrlen);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_control, untrusted_control);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_controllen, controllen);
+      COPY_VALUE_TO_UNTRUSTED(&msghdr->msg_flags, flags);
+
+      retval = rakis_io_uring_send(sockfd, msghdr);
+
+    } else {
+      size = 0;
+      for (size_t i = 0; i < iov_len; i++) {
+          memcpy((char*)obuf + size, iov[i].iov_base, iov[i].iov_len);
+          size += iov[i].iov_len;
+      }
+
+      ocall_send_args = sgx_alloc_on_ustack_aligned(sizeof(*ocall_send_args),
+                                                    alignof(*ocall_send_args));
+      if (!ocall_send_args) {
+          retval = -EPERM;
+          goto out;
+      }
+
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->sockfd, sockfd);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->count, size);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->addrlen, addrlen);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->buf, obuf);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->addr, untrusted_addr);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->control, untrusted_control);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->controllen, controllen);
+      COPY_VALUE_TO_UNTRUSTED(&ocall_send_args->flags, flags);
+
+      retval = sgx_exitless_ocall(OCALL_SEND, ocall_send_args);
+    }
 
     if (retval < 0 && retval != -EACCES && retval != -EAGAIN && retval != -EWOULDBLOCK &&
             retval != -EALREADY && retval != -EBADF && retval != -ECONNRESET &&
@@ -1805,8 +1915,58 @@ void ocall_sched_yield(void) {
     sgx_reset_ustack(old_ustack);
 }
 
-int ocall_poll(struct pollfd* fds, size_t nfds, uint64_t* timeout_us) {
+static int rakis_poll(struct pollfd* fds, size_t nfds, uint64_t* timeout_us, bool* wakeup) {
+  struct __kernel_timespec* u_timeout = NULL;
+  void* old_ustack = NULL;
+  int retval;
+
+  if (timeout_us) {
+    old_ustack = sgx_prepare_ustack();
+    u_timeout = sgx_alloc_on_ustack_aligned(sizeof(struct __kernel_timespec),
+                                              alignof(struct __kernel_timespec));
+
+    uint64_t timeout_ns = (*timeout_us) * TIME_NS_IN_US;
+    WRITE_ONCE(u_timeout->tv_sec, timeout_ns / TIME_NS_IN_S);
+    WRITE_ONCE(u_timeout->tv_nsec, timeout_ns % TIME_NS_IN_S);
+  }
+
+  retval = rakis_io_uring_poll(fds, nfds, u_timeout, wakeup);
+
+  if (retval == -EIO) {
+    return retval;
+  }
+
+  if (retval == -ETIME) {
+    retval = 0;
+    *timeout_us = 0;
+  }
+
+  if (retval < 0 && retval != -EINTR && retval != -EINVAL && retval != -ENOMEM) {
+    retval = -EPERM;
+  }
+
+  if (retval >= 0) {
+    if ((size_t)retval > nfds) {
+      retval = -EPERM;
+    }
+  }
+
+  if (old_ustack){
+    sgx_reset_ustack(old_ustack);
+  }
+
+  return retval;
+}
+
+int ocall_poll(struct pollfd* fds, size_t nfds, uint64_t* timeout_us, bool* wakeup) {
     int retval = 0;
+    if (RAKIS_IS_READY()){
+      retval = rakis_poll(fds, nfds, timeout_us, wakeup);
+      if (retval != -EIO) {
+        return retval;
+      }
+    }
+
     size_t nfds_bytes = nfds * sizeof(struct pollfd);
     struct ocall_poll* ocall_poll_args;
     uint64_t remaining_time_us = timeout_us ? *timeout_us : (uint64_t)-1;
@@ -2380,3 +2540,217 @@ out:
     sgx_reset_ustack(old_ustack);
     return ret;
 }
+
+#ifdef RAKIS
+int ocall_RAKISInit(struct rakis_config* rakis_config, struct rakis_pal* rakis_pal){
+    int ret;
+    void* old_ustack = sgx_prepare_ustack();
+
+    ms_ocall_rakis_init_t* ms = sgx_alloc_on_ustack_aligned(sizeof(*ms), alignof(*ms));
+    if (!ms) {
+      ret = -EPERM;
+      goto out;
+    }
+
+    // first, the config struct
+    // allocate for rakis_config within ms then write the pointer in ms
+    struct rakis_config* rakis_config__u = sgx_alloc_on_ustack_aligned(
+        sizeof(struct rakis_config),
+        alignof(struct rakis_config));
+    if (!rakis_config__u) {
+        ret = -EPERM;
+        goto out;
+    }
+
+    // fillin untrusted rakis_config, only the needed fields for init
+    WRITE_ONCE(ms->rakis_config,            rakis_config__u);
+
+    // fill in the io_uring cfg
+    WRITE_ONCE(rakis_config__u->io_urings_cfg.io_urings_num, rakis_config->io_urings_cfg.io_urings_num);
+    WRITE_ONCE(rakis_config__u->io_urings_cfg.entries_num,   rakis_config->io_urings_cfg.entries_num);
+
+    WRITE_ONCE(rakis_config__u->netifs_num, rakis_config->netifs_num);
+    // allocate the netif array then write the pointer in rakis_config__u
+    struct rakis_netif_cfg* netifs_cfg__u = sgx_alloc_on_ustack_aligned(
+        sizeof(struct rakis_netif_cfg) * rakis_config->netifs_num,
+        alignof(struct rakis_netif_cfg));
+    if (!netifs_cfg__u) {
+      ret = -EPERM;
+      goto out;
+    }
+    WRITE_ONCE(rakis_config__u->netifs_cfg, netifs_cfg__u);
+
+    // now we iterate the netifs and copy the rakis_netif_cfg into the untrusted rakis_netif_cfg array
+    // make sure to avoid copying enclave pointers to untrusted memory
+    for (u32 i = 0; i < rakis_config->netifs_num; i++) {
+      struct rakis_netif_cfg* netif_cfg__t = &rakis_config->netifs_cfg[i];
+      struct rakis_netif_cfg* netif_cfg__u = &netifs_cfg__u[i];
+
+      memcpy(netif_cfg__u->interface_name, netif_cfg__t->interface_name, sizeof(netif_cfg__t->interface_name));
+      WRITE_ONCE(netif_cfg__u->xsks_num,   netif_cfg__t->xsks_num);
+
+      // allocate each xsk array within netif_cfg__u then write the pointer
+      struct rakis_xsk_cfg* xsk_cfg__u = sgx_alloc_on_ustack_aligned(
+          sizeof(struct rakis_xsk_cfg) * netif_cfg__t->xsks_num,
+          alignof(struct rakis_xsk_cfg));
+      if (!xsk_cfg__u) {
+        ret = -EPERM;
+        goto out;
+      }
+      WRITE_ONCE(netif_cfg__u->xsks_cfg, xsk_cfg__u);
+
+      for (u32 j = 0; j < netif_cfg__t->xsks_num; j++) {
+        struct rakis_xsk_cfg* xsk_cfg__t = &netif_cfg__t->xsks_cfg[j];
+        struct rakis_xsk_cfg* xsk_cfg__u = &netif_cfg__u->xsks_cfg[j];
+
+        memcpy(xsk_cfg__u->ctrl_prcs_path, xsk_cfg__t->ctrl_prcs_path, sizeof(xsk_cfg__t->ctrl_prcs_path));
+        WRITE_ONCE(xsk_cfg__u->qid,             xsk_cfg__t->qid);
+        WRITE_ONCE(xsk_cfg__u->fill_ring_size,  xsk_cfg__t->fill_ring_size);
+        WRITE_ONCE(xsk_cfg__u->compl_ring_size, xsk_cfg__t->compl_ring_size);
+        WRITE_ONCE(xsk_cfg__u->rx_ring_size,    xsk_cfg__t->rx_ring_size);
+        WRITE_ONCE(xsk_cfg__u->tx_ring_size,    xsk_cfg__t->tx_ring_size);
+        WRITE_ONCE(xsk_cfg__u->frame_size,      xsk_cfg__t->frame_size);
+        WRITE_ONCE(xsk_cfg__u->umem_size,       xsk_cfg__t->umem_size);
+        WRITE_ONCE(xsk_cfg__u->zero_copy,       xsk_cfg__t->zero_copy);
+        WRITE_ONCE(xsk_cfg__u->needs_wakeup,    xsk_cfg__t->needs_wakeup);
+      }
+    }
+
+    // Done with the config struct
+    // now we start with the rakis_pal
+    // for this, we only allocate the struct itself, but dont copy anything
+
+    struct rakis_pal* rakis_pal__u = sgx_alloc_on_ustack_aligned(
+        sizeof(struct rakis_pal),
+        alignof(struct rakis_pal));
+    if (!rakis_pal__u) {
+        ret = -EPERM;
+        goto out;
+    }
+    WRITE_ONCE(ms->rakis_pal, rakis_pal__u);
+
+    // allocate for the rakis_netif_pal array within rakis_pal then write the pointer
+    struct rakis_netif_pal* rakis_netifs_pal__u = sgx_alloc_on_ustack_aligned(
+        sizeof(struct rakis_netif_pal) * rakis_config->netifs_num,
+        alignof(struct rakis_netif_pal));
+    if (!rakis_netifs_pal__u) {
+        ret = -EPERM;
+        goto out;
+    }
+    WRITE_ONCE(rakis_pal__u->netifs, rakis_netifs_pal__u);
+
+    // withing each netif_data, we allocate the rakis_xsk_pal array
+    for (u32 i = 0; i < rakis_config->netifs_num; i++) {
+      struct rakis_netif_cfg* rakis_netif_cfg__t  = &rakis_config->netifs_cfg[i];
+      struct rakis_netif_pal* rakis_netif_pal__u = &rakis_netifs_pal__u[i];
+
+      // allocate for the rakis_xsk_pal* within each rakis_netif_pal then write the pointer
+      void* rakis_xsks_pal__u = sgx_alloc_on_ustack_aligned(
+          sizeof(struct rakis_xsk_pal) * rakis_netif_cfg__t->xsks_num,
+          alignof(struct rakis_xsk_pal));
+      if (!rakis_xsks_pal__u) {
+        ret = -EPERM;
+        goto out;
+      }
+      WRITE_ONCE(rakis_netif_pal__u->xsks, rakis_xsks_pal__u);
+    }
+
+    // allocate the io_uring
+    struct rakis_io_uring_pal* rakis_io_urings_pal__u =
+      sgx_alloc_on_ustack_aligned(
+          sizeof(struct rakis_io_uring_pal) * rakis_config->io_urings_cfg.io_urings_num,
+          alignof(struct rakis_io_uring_pal));
+    if (!rakis_io_urings_pal__u) {
+      ret = -EPERM;
+      goto out;
+    }
+    WRITE_ONCE(rakis_pal__u->io_urings, rakis_io_urings_pal__u);
+
+    // finally, zero the monitor pointer
+    WRITE_ONCE(rakis_pal__u->rakis_monitor, NULL);
+
+    do {
+      // do the ocall
+      ret = sgx_exitless_ocall(OCALL_RAKIS_INIT, ms);
+    } while (ret == -EINTR);
+
+    if (ret < 0){
+      goto out;
+    }
+
+#define RAKIS_COPY_XDP_RING(__UD_XSK, __UD_XSK_MS, __RING) \
+    __UD_XSK.__RING.mmap_addr = COPY_UNTRUSTED_VALUE(&__UD_XSK_MS.__RING.mmap_addr);\
+    __UD_XSK.__RING.mmap_size = COPY_UNTRUSTED_VALUE(&__UD_XSK_MS.__RING.mmap_size);\
+    __UD_XSK.__RING.producer  = COPY_UNTRUSTED_VALUE(&__UD_XSK_MS.__RING.producer);\
+    __UD_XSK.__RING.consumer  = COPY_UNTRUSTED_VALUE(&__UD_XSK_MS.__RING.consumer);\
+    __UD_XSK.__RING.ring      = COPY_UNTRUSTED_VALUE(&__UD_XSK_MS.__RING.ring);\
+    __UD_XSK.__RING.flags     = COPY_UNTRUSTED_VALUE(&__UD_XSK_MS.__RING.flags);
+
+    for (uint32_t i=0; i < rakis_config->netifs_num; i++) {
+      struct rakis_netif_pal* netif__t    = &rakis_pal->netifs[i];
+      struct rakis_netif_pal* netif_ms__u = &ms->rakis_pal->netifs[i];
+      netif__t->ifindex        = COPY_UNTRUSTED_VALUE(&netif_ms__u->ifindex);
+
+      for (uint32_t j=0; j < rakis_config->netifs_cfg[i].xsks_num; j++) {
+        netif__t->xsks[j].xsk_fd         = COPY_UNTRUSTED_VALUE(&netif_ms__u->xsks[j].xsk_fd);
+        netif__t->xsks[j].xsk_bpf_map_fd = COPY_UNTRUSTED_VALUE(&netif_ms__u->xsks[j].xsk_bpf_map_fd);
+        netif__t->xsks[j].umem_area      = COPY_UNTRUSTED_VALUE(&netif_ms__u->xsks[j].umem_area);
+
+        RAKIS_COPY_XDP_RING(netif__t->xsks[j], netif_ms__u->xsks[j], fill_ring);
+        RAKIS_COPY_XDP_RING(netif__t->xsks[j], netif_ms__u->xsks[j], compl_ring);
+        RAKIS_COPY_XDP_RING(netif__t->xsks[j], netif_ms__u->xsks[j], rx_ring);
+        RAKIS_COPY_XDP_RING(netif__t->xsks[j], netif_ms__u->xsks[j], tx_ring);
+      }
+    }
+
+    for (uint32_t i = 0; i < rakis_config->io_urings_cfg.io_urings_num; i++) {
+      struct rakis_io_uring_pal* ior__t = &rakis_pal->io_urings[i];
+      struct rakis_io_uring_pal* ior__u = &ms->rakis_pal->io_urings[i];
+
+      ior__t->fd                  = COPY_UNTRUSTED_VALUE(&ior__u->fd);
+
+      ior__t->sqring.producer     = COPY_UNTRUSTED_VALUE(&ior__u->sqring.producer);
+      ior__t->sqring.consumer     = COPY_UNTRUSTED_VALUE(&ior__u->sqring.consumer);
+      ior__t->sqring.mmap_addr    = COPY_UNTRUSTED_VALUE(&ior__u->sqring.mmap_addr);
+      ior__t->sqring.mmap_size    = COPY_UNTRUSTED_VALUE(&ior__u->sqring.mmap_size);
+      ior__t->sqring.sqes         = COPY_UNTRUSTED_VALUE(&ior__u->sqring.sqes);
+
+      ior__t->cqring.producer     = COPY_UNTRUSTED_VALUE(&ior__u->cqring.producer);
+      ior__t->cqring.consumer     = COPY_UNTRUSTED_VALUE(&ior__u->cqring.consumer);
+      ior__t->cqring.mmap_addr    = COPY_UNTRUSTED_VALUE(&ior__u->cqring.mmap_addr);
+      ior__t->cqring.mmap_size    = COPY_UNTRUSTED_VALUE(&ior__u->cqring.mmap_size);
+      ior__t->cqring.cqes         = COPY_UNTRUSTED_VALUE(&ior__u->cqring.cqes);
+    }
+
+    rakis_pal->rakis_monitor = COPY_UNTRUSTED_VALUE(&ms->rakis_pal->rakis_monitor);
+out:
+    sgx_reset_ustack(old_ustack);
+    return ret;
+
+}
+
+void ocall_RAKISMonitorThreadStart(struct rakis_monitor_pal* rakis_monitor_pal){
+    void* old_ustack = sgx_prepare_ustack();
+
+    if (!sgx_is_valid_untrusted_ptr(
+          rakis_monitor_pal,
+          sizeof(struct rakis_monitor_pal),
+          alignof(struct rakis_monitor_pal))) {
+      goto out;
+    }
+
+    ms_ocall_rakis_monitor_t* ms = sgx_alloc_on_ustack_aligned(sizeof(*ms), alignof(*ms));
+    if (!ms) {
+        goto out;
+    }
+    WRITE_ONCE(ms->rakis_monitor_pal, rakis_monitor_pal);
+
+    do {
+        sgx_exitless_ocall(OCALL_RAKIS_MONITOR_START, ms);
+    } while (true);
+
+out:
+    sgx_reset_ustack(old_ustack);
+    ocall_exit(1, true);
+}
+#endif

@@ -28,6 +28,10 @@
 #include "toml.h"
 #include "toml_utils.h"
 
+#ifdef RAKIS
+#include "rakis/rakis.h"
+#endif
+
 static_assert(sizeof(libos_tcb_t) <= PAL_LIBOS_TCB_SIZE,
               "libos_tcb_t does not fit into PAL_TCB; please increase PAL_LIBOS_TCB_SIZE");
 
@@ -501,6 +505,10 @@ noreturn void libos_init(const char* const* argv, const char* const* envp) {
     /* XXX: this will break uname checkpointing (if we implement it). */
     RUN_INIT(set_hostname, g_pal_public_state->dns_host.hostname,
              strlen(g_pal_public_state->dns_host.hostname));
+
+#ifdef RAKIS
+    RUN_INIT(init_rakis);
+#endif
 
     log_debug("LibOS initialized");
 

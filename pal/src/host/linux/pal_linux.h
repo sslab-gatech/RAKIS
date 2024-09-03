@@ -18,6 +18,7 @@
 #include "pal_rtld.h"
 #include "stat.h"
 #include "syscall.h"
+#include "rakis/io_uring.h"
 
 struct timespec;
 struct timeval;
@@ -81,6 +82,8 @@ typedef struct pal_linux_tcb {
         int        (*callback)(void*);
         void*      param;
     };
+
+    struct rakis_io_uring* rakis_io_uring;
 } PAL_LINUX_TCB;
 
 int pal_thread_init(void* tcbptr);

@@ -17,6 +17,8 @@
 #include "libos_utils.h"
 #include "linux_abi/errors.h"
 #include "pal.h"
+#include "rakis/rakis_socket.h"
+#include "rakis/stack/rakis_misc.h"
 
 typedef unsigned long __fd_mask;
 
@@ -50,6 +52,10 @@ typedef unsigned long __fd_mask;
 #define NFDS_LIMIT_TO_USE_STACK 16
 
 static long do_poll(struct pollfd* fds, size_t fds_len, uint64_t* timeout_us) {
+    RAKIS_STAT_INC(poll_count);
+    RAKIS_STAT_DURATION_START(poll_event_duration);
+
+    struct pollfd* rakis_fds = NULL;
     struct libos_handle** libos_handles = NULL;
     PAL_HANDLE* pal_handles = NULL;
     /* Double the amount of PAL events - one part are input events, the other - output. */
@@ -57,29 +63,34 @@ static long do_poll(struct pollfd* fds, size_t fds_len, uint64_t* timeout_us) {
     bool allocate_on_stack = fds_len <= NFDS_LIMIT_TO_USE_STACK;
 
     if (allocate_on_stack) {
-        static_assert((sizeof(*libos_handles) + sizeof(*pal_handles) + sizeof(*pal_events) * 2) *
-                      NFDS_LIMIT_TO_USE_STACK <= 384,
+        static_assert((sizeof(*rakis_fds) + sizeof(*libos_handles) + sizeof(*pal_handles) + sizeof(*pal_events) * 2) *
+                      NFDS_LIMIT_TO_USE_STACK <= 512,
                       "Would use too much space on stack, reduce the limit");
         libos_handles = __builtin_alloca(fds_len * sizeof(*libos_handles));
         pal_handles = __builtin_alloca(fds_len * sizeof(*pal_handles));
         pal_events = __builtin_alloca(fds_len * sizeof(*pal_events) * 2);
+        rakis_fds = __builtin_alloca(fds_len * sizeof(*rakis_fds));
     } else {
         libos_handles = malloc(fds_len * sizeof(*libos_handles));
         pal_handles = malloc(fds_len * sizeof(*pal_handles));
         pal_events = malloc(fds_len * sizeof(*pal_events) * 2);
-        if (!libos_handles || !pal_handles || !pal_events) {
+        rakis_fds = malloc(fds_len * sizeof(*rakis_fds));
+        if (!libos_handles || !pal_handles || !pal_events || !rakis_fds) {
             free(libos_handles);
             free(pal_handles);
             free(pal_events);
+            free(rakis_fds);
             return -ENOMEM;
         }
     }
     memset(libos_handles, 0, fds_len * sizeof(*libos_handles));
     memset(pal_handles, 0, fds_len * sizeof(*pal_handles));
     memset(pal_events, 0, fds_len * sizeof(*pal_events) * 2);
+    memset(rakis_fds, 0, fds_len * sizeof(*rakis_fds));
 
     long ret;
     size_t ret_events_count = 0;
+    size_t rakis_cnt = 0;
     struct libos_handle_map* map = get_cur_thread()->handle_map;
 
     rwlock_read_lock(&map->lock);
@@ -90,6 +101,8 @@ static long do_poll(struct pollfd* fds, size_t fds_len, uint64_t* timeout_us) {
      * - `libos_handles[i]` and `pal_events[i]` are set to non-NULL values
      */
     for (size_t i = 0; i < fds_len; i++) {
+        rakis_fds[i].fd = -1;
+
         if (fds[i].fd < 0) {
             /* Negative file descriptors are ignored. */
             fds[i].revents = 0;
@@ -147,6 +160,14 @@ static long do_poll(struct pollfd* fds, size_t fds_len, uint64_t* timeout_us) {
                 ret_events_count++;
                 continue;
             }
+        } else if (handle->type == TYPE_RAKIS) {
+            rakis_fds[i].fd = handle->info.rakis_sock;
+            rakis_fds[i].events = events;
+            rakis_fds[i].revents = 0;
+            rakis_cnt++;
+            libos_handles[i] = handle;
+            get_handle(handle);
+            continue;
         } else {
             pal_handle = handle->pal_handle;
             if (!pal_handle) {
@@ -175,15 +196,36 @@ static long do_poll(struct pollfd* fds, size_t fds_len, uint64_t* timeout_us) {
     }
 
     pal_wait_flags_t* ret_events = pal_events + fds_len;
-    ret = PalStreamsWaitEvents(fds_len, pal_handles, pal_events, ret_events, timeout_us);
-    if (ret < 0) {
-        ret = pal_to_unix_errno(ret);
-        if (ret == -EAGAIN) {
-            /* Timeout - return number of already seen events, which might be 0. */
-            ret = ret_events_count;
-        }
-        goto out;
+#ifdef RAKIS
+    int rakis_events = 0;
+    struct rakis_poll_cb poll_cb;
+    memset(&poll_cb, 0, sizeof(poll_cb));
+
+    if (rakis_cnt) {
+      // there are fds in rakis_fds
+      rakis_events = rakis_poll_start(rakis_fds, fds_len, &poll_cb);
+      if (rakis_events > 0){
+        poll_cb.notify_mem = true;
+        goto host_skip;
+      }
     }
+#endif
+
+    ret = PalStreamsWaitEvents(fds_len, pal_handles, pal_events, ret_events, timeout_us, &(poll_cb.notify_mem));
+    if (ret < 0) {
+      ret = pal_to_unix_errno(ret);
+      if (ret != -EAGAIN) {
+        goto out;
+      }
+    }
+
+#ifdef RAKIS
+    if (rakis_cnt && rakis_events == 0) {
+      rakis_events = rakis_poll_end(rakis_fds, fds_len, &poll_cb);
+    }
+#endif
+
+host_skip:
 
     for (size_t i = 0; i < fds_len; i++) {
         if (!libos_handles[i]) {
@@ -191,6 +233,17 @@ static long do_poll(struct pollfd* fds, size_t fds_len, uint64_t* timeout_us) {
         }
 
         fds[i].revents = 0;
+        if (rakis_cnt &&
+            rakis_events &&
+            libos_handles[i]->type == TYPE_RAKIS &&
+            rakis_fds[i].revents){
+
+          fds[i].revents = rakis_fds[i].revents;
+          ret_events_count++;
+          continue;
+        }
+
+
         if (ret_events[i] & PAL_WAIT_ERROR)
             fds[i].revents |= POLLERR;
         if (ret_events[i] & PAL_WAIT_HANG_UP) {
@@ -219,6 +272,7 @@ out:
         free(libos_handles);
         free(pal_handles);
         free(pal_events);
+        free(rakis_fds);
     }
 
     if (ret == -EINTR) {
@@ -226,6 +280,12 @@ out:
          * a signal handler. */
         ret = -ERESTARTNOHAND;
     }
+
+    if (rakis_events > 0){
+      RAKIS_STAT_INC(poll_event_count);
+      RAKIS_STAT_DURATION_END(poll_event_duration);
+    }
+
     return ret;
 }
 

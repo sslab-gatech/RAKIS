@@ -192,6 +192,11 @@ void _PalThreadYieldExecution(void) {
 __attribute_no_sanitize_address
 noreturn void _PalThreadExit(int* clear_child_tid) {
     PAL_LINUX_TCB* tcb = pal_get_linux_tcb();
+
+    if (tcb->rakis_io_uring){
+      RAKIS_SET_ATOMIC(&tcb->rakis_io_uring, NULL);
+    }
+
     PAL_HANDLE handle = tcb->handle;
     assert(handle);
 

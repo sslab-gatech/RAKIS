@@ -611,7 +611,7 @@ static int do_epoll_wait(int epfd, struct epoll_event* events, int maxevents, in
 
         if (!have_pending_signals()) {
             ret = PalStreamsWaitEvents(items_count + 1, pal_handles, pal_events, pal_ret_events,
-                                       timeout_ms == -1 ? NULL : &timeout_us);
+                                       timeout_ms == -1 ? NULL : &timeout_us, NULL);
             ret = pal_to_unix_errno(ret);
         } else {
             ret = -EINTR;
