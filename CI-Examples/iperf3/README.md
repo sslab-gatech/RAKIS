@@ -36,6 +36,11 @@ We provide Makefile targets that will make this easier and less confusing:
 | eurosys-reproduce-server-rakis-sgx | Rakis-SGX |
 | eurosys-reproduce-server-rakis-direct | Rakis-direct |
 
+Example command:
+```
+make eurosys-reproduce-server-native
+```
+
 By the end of this command, you should have the iperf3 server running and ready
 for the experiment on 10.50.0.1:57344.
 
