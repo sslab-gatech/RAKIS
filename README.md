@@ -131,7 +131,7 @@ After compilation is done, we should find the iperf3 binary within the
 `CI-Examples/iperf3` directory.
 To run the server within SGX we can simply do:
 ```shell
-sudo $HOME/.local/gramine/bin/gramine-sgx ./memcached -u nobody -U 57344 -l 10.50.0.1 -p 57344 -A -k -t 1
+sudo $HOME/.local/gramine/bin/gramine-sgx ./iperf3 -s -p 57344 -4 -V -B 10.50.0.1 --forceflush
 ```
 
 Note that you can configure your Linux user to avoid using sudo here. But lets
@@ -204,4 +204,11 @@ Artifact evaluation experiments:
 - E5: [CI-Examples/mcrypt](CI-Examples/mcrypt).
 
 ## Bibtex
-TBD
+```
+@inproceedings{10.1145/3689031.3696090,
+author = {Mansour Alharthi and Fan Sang and Dmitrii Kuvaiskii and Mona Vij and Taesoo Kim},
+title = {RAKIS: Secure Fast I/O Primitives Across Trust Boundaries on Intel SGX},
+booktitle = {Proceedings of Twentieth European Conference on Computer Systems},
+year = {2025},
+}
+```
