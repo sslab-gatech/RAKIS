@@ -204,7 +204,7 @@ Artifact evaluation experiments:
 - E5: [CI-Examples/mcrypt](CI-Examples/mcrypt).
 
 ## Bibtex
-```
+```bibtex
 @inproceedings{10.1145/3689031.3696090,
 author = {Mansour Alharthi and Fan Sang and Dmitrii Kuvaiskii and Mona Vij and Taesoo Kim},
 title = {RAKIS: Secure Fast I/O Primitives Across Trust Boundaries on Intel SGX},
