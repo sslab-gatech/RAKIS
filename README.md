@@ -201,7 +201,7 @@ Artifact evaluation experiments:
 - E3: [CI-Examples/memcached](CI-Examples/memcached).
 - E4: [CI-Examples/unix-benchmark](CI-Examples/unix-benchmark).
 - E5: [CI-Examples/redis](CI-Examples/redis).
-- E5: [CI-Examples/mcrypt](CI-Examples/mcrypt).
+- E6: [CI-Examples/mcrypt](CI-Examples/mcrypt).
 
 ## Bibtex
 ```bibtex
